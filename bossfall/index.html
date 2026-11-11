@@ -20,6 +20,7 @@
   h1 { font-family: Georgia, "Times New Roman", serif; font-size: 22px; letter-spacing: 1px; margin: 0; color: var(--gold); flex: 1; }
   .round { width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--line); background: var(--panel); font-weight: 700; font-size: 15px; }
   .round.on { border-color: var(--gold); color: var(--gold); }
+  a.round { display: inline-flex; align-items: center; justify-content: center; color: var(--mute); text-decoration: none; font-size: 12px; }
 
   .stances { display: flex; gap: 6px; }
   .stances button { flex: 1; padding: 7px 4px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--panel); font-size: 13px; line-height: 1.2; }
@@ -113,6 +114,26 @@
   .mini.void .front::after { opacity: 1; }
   .mini.void .eff { text-decoration: line-through; }
 
+  /* Effects layer: short-lived shapes animated from JS (fly, burst, ring, ...), centred on left/top. */
+  #fx { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 5; }
+  .fx { position: absolute; width: var(--w); height: var(--h); margin: calc(var(--h) / -2) 0 0 calc(var(--w) / -2); border-radius: 50%; }
+  .fx.streak { border-radius: 2px; background: linear-gradient(90deg, transparent, rgba(190, 220, 255, .6) 45%, #fff); box-shadow: 0 0 10px #cfe4ff; }
+  .fx.streak.gold { background: linear-gradient(90deg, transparent, rgba(232, 184, 74, .7) 45%, #fff6c8); box-shadow: 0 0 12px var(--gold); }
+  .fx.slash { border-radius: 0; background: linear-gradient(90deg, transparent, #fff 40%, #d6ecff 60%, transparent); clip-path: polygon(0 50%, 48% 0, 100% 50%, 48% 100%); }
+  .fx.dot { background: var(--c); box-shadow: 0 0 6px var(--c); }
+  .fx.shard { border-radius: 0; background: linear-gradient(#fff, var(--c)); clip-path: polygon(50% 0, 100% 100%, 0 70%); }
+  .fx.coin { background: radial-gradient(circle at 35% 35%, #fff3b0, var(--gold) 50%, #9a6a12); box-shadow: 0 0 6px var(--gold); }
+  .fx.orb { background: radial-gradient(circle, #fff 0 22%, var(--c) 48%, transparent 72%); box-shadow: 0 0 18px var(--c); }
+  .fx.bolt { border-radius: 0; margin-left: 0; transform-origin: 0 50%; background: linear-gradient(90deg, #9fd0ff, #fff); }
+  .fx.bolt.glow { background: rgba(140, 200, 255, .45); }
+  .fx.ring { border: 3px solid var(--c); box-shadow: 0 0 14px var(--c), inset 0 0 10px var(--c); }
+  .fx.puff { background: radial-gradient(circle, rgba(170, 165, 180, .8), rgba(120, 115, 130, .3) 50%, transparent 70%); }
+  .fx.flash { border-radius: 10px; background: radial-gradient(circle, #fff 15%, var(--c) 60%, transparent 95%); }
+  .fx.screen { width: 100%; height: 100%; margin: 0; border-radius: 0; background: radial-gradient(circle, var(--c), transparent 80%); }
+  .fx.rays { background: repeating-conic-gradient(rgba(255, 220, 130, .7) 0 7deg, transparent 7deg 20deg); -webkit-mask: radial-gradient(circle, #000 15%, transparent 68%); mask: radial-gradient(circle, #000 15%, transparent 68%); }
+  .fx.num, .fx.stamp { width: auto; height: auto; margin: 0; border-radius: 0; white-space: nowrap; font-weight: 900; color: #fff; text-shadow: 0 2px 0 #000, 0 0 12px var(--c); }
+  .fx.stamp { font-family: Georgia, serif; color: var(--gold); text-shadow: 0 4px 0 #5a3a0c, 0 0 30px rgba(232, 184, 74, .9), 0 0 4px #000; }
+
   /* Reduced motion: faces cross-fade in place, no recoil, fall or lean. */
   @media (prefers-reduced-motion: reduce) {
     .inner { transform: none; transition: none; }
@@ -153,6 +174,7 @@
 <div id="app">
   <header>
     <h1>Bossfall</h1>
+    <a class="round" href="3d.html" title="Switch to the 3D board" aria-label="Switch to the 3D board">3D</a>
     <button class="round" id="bSound" aria-label="Sound on or off" title="Sound">♪</button>
     <button class="round" id="bTurbo" aria-label="Fast play on or off" title="Fast play: flips every card for you">»</button>
     <button class="round" id="bInfo" aria-label="Rules and payouts" title="Rules">i</button>
@@ -203,6 +225,7 @@
   </div>
 </div>
 
+<div id="fx"></div>
 <div id="modal"><div class="sheet" id="sheet"></div></div>
 
 <script src="engine.js"></script>
@@ -241,6 +264,8 @@ const SFX = {
   win: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.2, 'triangle', i * 0.1)),
   big: () => [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone(f, 0.3, 'triangle', i * 0.09, 0.15)),
   lose: () => { tone(294, 0.2, 'sine'); tone(220, 0.35, 'sine', 0.15); },
+  boom: () => { tone(70, 0.5, 'sawtooth', 0, 0.14); tone(52, 0.6, 'square', 0.05, 0.08); },
+  fury: () => { tone(98, 0.5, 'sawtooth', 0, 0.12); [523, 784, 1047, 1568, 2093].forEach((f, i) => tone(f, 0.3, 'square', 0.06 + i * 0.06, 0.06)); },
 };
 
 // Artwork is art/<name>.webp. A picture is used once it has loaded; until then, or if it is missing, the emoji shows.
@@ -264,6 +289,165 @@ function reveal(el) { el.style.removeProperty('--d'); el.classList.remove('down'
 function bump(el) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
 function setNum(el, v) { if (el.textContent !== String(v)) { el.textContent = v; bump(el); } }
 function log(text, cls = '') { const l = $('log'); l.className = 'log ' + cls; l.textContent = text; }
+
+// Effects: elements in #fx animated with el.animate(), removed when done. Durations follow wait()'s turbo scale.
+const GOLD = '#e8b84a', RED = 'rgba(255, 70, 60, .8)';
+const SPELL = { Spark: '#ffe45c', Firebolt: '#ff8a2a', Lightning: '#bfe3ff', Meteor: '#ff6a2a', Cataclysm: '#ff3d1a' };
+const T = ms => (S.turbo ? ms * 0.4 : ms);
+const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const live = new Set();
+const at = (el, fx = 0.5, fy = 0.5) => { const r = el.getBoundingClientRect(); return [r.left + r.width * fx, r.top + r.height * fy]; };
+const lerp = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k];
+const rnd = (a, b) => a + Math.random() * (b - a);
+function fx(cls, [x, y], w, h = w, css = '') {
+  const e = document.createElement('div');
+  e.className = 'fx ' + cls; e.style.cssText = `left:${x}px;top:${y}px;--w:${w}px;--h:${h}px;${css}`;
+  $('fx').appendChild(e); return e;
+}
+// Animate; an effect element is removed when done, a board element (shake, punch) keeps no fill.
+function anim(e, kf, ms, o = {}) {
+  const own = e.parentNode === $('fx');
+  const a = e.animate(kf, { duration: T(ms), easing: 'ease-out', fill: own ? 'both' : 'none', ...o, delay: T(o.delay || 0) });
+  const p = a.finished.catch(() => {}).then(() => { if (own) e.remove(); live.delete(p); });
+  live.add(p); return p;
+}
+// Fly e from p0 to p1 on a curve bowed sideways by arc px, pointing along it.
+function fly(e, p0, p1, arc, ms, o = {}) {
+  const [x0, y0] = p0, [x1, y1] = p1, dx = x1 - x0, dy = y1 - y0, l = Math.hypot(dx, dy) || 1;
+  const cx = x0 + dx / 2 - dy / l * arc, cy = y0 + dy / 2 + dx / l * arc;
+  return anim(e, [0, 0.25, 0.5, 0.75, 1].map(t => {
+    const u = 1 - t, x = u * u * x0 + 2 * u * t * cx + t * t * x1, y = u * u * y0 + 2 * u * t * cy + t * t * y1;
+    const a = Math.atan2(2 * u * (cy - y0) + 2 * t * (y1 - cy), 2 * u * (cx - x0) + 2 * t * (x1 - cx));
+    return { transform: `translate(${x - x0}px, ${y - y0}px) rotate(${a}rad)`, opacity: o.op ?? 1 };
+  }), ms, { easing: o.ease || 'cubic-bezier(.45, 0, .85, .55)', delay: o.delay });
+}
+function burst(p, { n = 8, c = '#fff', d = 50, s = 5, ms = 480, cls = 'dot' } = {}) {
+  if (still()) return;
+  for (let i = 0; i < n; i++) {
+    const a = (i + rnd(0, 0.6)) / n * 2 * Math.PI, r = d * rnd(0.55, 1.15);
+    anim(fx(cls, p, s, cls === 'shard' ? s * 1.6 : s, `--c:${c}`), [{ transform: `rotate(${a}rad)`, opacity: 1 },
+      { transform: `translate(${Math.cos(a) * r}px, ${Math.sin(a) * r}px) rotate(${a * 3}rad) scale(.3)`, opacity: 0 }], ms * rnd(0.8, 1.2), { easing: 'cubic-bezier(.2, .7, .4, 1)' });
+  }
+}
+function ring(p, size, c, ms = 500, delay = 0) {
+  if (still()) return;
+  anim(fx('ring', p, size, size, `--c:${c}`), [{ transform: 'scale(.2)', opacity: 1 }, { transform: 'scale(1)', opacity: 0 }], ms, { delay });
+}
+function flashOn(el, c, peak = 0.85, ms = 280) {
+  const r = el.getBoundingClientRect();
+  return anim(fx('flash', at(el), r.width + 16, r.height + 16, `--c:${c}`), [{ opacity: 0 }, { opacity: peak, offset: 0.2 }, { opacity: 0 }], ms);
+}
+function screen(c, peak = 0.35, ms = 380) { if (!still()) anim(fx('screen', [0, 0], 0, 0, `--c:${c}`), [{ opacity: 0 }, { opacity: peak, offset: 0.15 }, { opacity: 0 }], ms); }
+function shake(px, ms) {
+  if (still()) return;
+  anim(document.querySelector('.arena'), [0, 1, -0.8, 0.6, -0.4, 0.2, 0].map((f, i) => ({ transform: `translate(${f * px}px, ${(i % 2 ? -0.5 : 0.5) * f * px}px)` })), ms, { easing: 'linear' });
+}
+function punch(el, k) { if (!still()) anim(el, [{ transform: 'scale(1)' }, { transform: `scale(${k})`, offset: 0.3 }, { transform: 'scale(1)' }], 420); }
+// A number that rises and fades (fade only with reduced motion); a stamp that slams in and holds.
+function num(p, text, c, size = 26, ms = 800) {
+  const e = fx('num', p, 0, 0, `--c:${c};font-size:${size}px${c === GOLD ? ';color:#ffe08a' : ''}`); e.textContent = text;
+  return anim(e, still() ? [{ opacity: 0, transform: 'translate(-50%, -50%)' }, { opacity: 1, offset: 0.2 }, { opacity: 0 }]
+    : [{ transform: 'translate(-50%, -50%) scale(.5)', opacity: 0 }, { transform: 'translate(-50%, -85%) scale(1.2)', opacity: 1, offset: 0.2 }, { transform: 'translate(-50%, -260%) scale(1)', opacity: 0 }], ms);
+}
+function stamp(text, size, ms) {
+  size = Math.min(size, innerWidth * 1.4 / text.length);
+  const e = fx('stamp', at(document.querySelector('.arena'), 0.5, 0.42), 0, 0, `font-size:${size}px`); e.textContent = text;
+  const m = s => `translate(-50%, -50%) scale(${still() ? 1 : s})`;
+  return anim(e, [{ transform: m(3), opacity: 0 }, { transform: m(0.9), opacity: 1, offset: 0.18 }, { transform: m(1), offset: 0.26 }, { transform: m(1.04), opacity: 1, offset: 0.75 }, { transform: m(1.15), opacity: 0 }], ms, { easing: 'ease-in-out' });
+}
+function rays(p, size, ms) { if (!still()) anim(fx('rays', p, size), [{ transform: 'scale(.3) rotate(0)', opacity: 0 }, { transform: 'scale(1) rotate(25deg)', opacity: 1, offset: 0.3 }, { transform: 'scale(1.1) rotate(60deg)', opacity: 0 }], ms); }
+function countNum(el, from, to, ms) {
+  const t0 = performance.now(), d = T(ms);
+  (function f(t) { const k = Math.min(1, (t - t0) / d); el.textContent = Math.round(from + (to - from) * k); if (k < 1) requestAnimationFrame(f); else bump(el); })(t0);
+}
+function clearFx() { $('fx').getAnimations({ subtree: true }).forEach(a => a.cancel()); $('fx').replaceChildren(); live.clear(); }
+
+// The attack leaves the card and travels; resolves at the moment of impact.
+async function launch(el, c, voided) {
+  if (still()) return;
+  const p0 = at(el, 0.5, 0.35), p1 = at($('boss')), col = SPELL[c.name];
+  if (c.t === 'phys') return fly(fx('streak', p0, 40 + c.v * 3, 3 + c.v * 0.45), p0, p1, -36, 260);
+  if (c.t === 'mult') return fly(fx('streak gold', p0, 46, 6), p0, at($('dmg')), 40, 280);
+  const s = 22 + c.v * 0.7;
+  if (voided) {
+    const p = lerp(p0, p1, 0.33);
+    await fly(fx('orb', p0, s, s, `--c:${col}`), p0, p, 12, 240, { ease: 'ease-out', op: 0.8 });
+    anim(fx('puff', p, s * 3), [{ transform: 'scale(.3)', opacity: 1 }, { transform: 'scale(1)', opacity: 0 }], 500);
+    burst(p, { n: 5, c: '#8a8496', d: 22, s: 4, ms: 420 });
+    return wait(90);
+  }
+  if (c.name === 'Lightning') {
+    const l = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]), a = Math.atan2(p1[1] - p0[1], p1[0] - p0[0]), N = 9;
+    const ys = [...Array(N + 1)].map((_, i) => (i % N ? rnd(20, 80) : 50));
+    for (const [cls, th] of [['bolt glow', 14], ['bolt', 4]]) {
+      const pts = ys.map((y, i) => `${i / N * 100}% ${y - th}%`).concat(ys.map((y, i) => `${i / N * 100}% ${y + th}%`).reverse());
+      anim(fx(cls, p0, l, 36, `clip-path:polygon(${pts})`), [{ transform: `rotate(${a}rad) scaleX(0)`, opacity: 1 }, { transform: `rotate(${a}rad) scaleX(1)`, opacity: 1, offset: 0.3 },
+        { opacity: 0.3, offset: 0.5 }, { opacity: 1, offset: 0.65 }, { transform: `rotate(${a}rad) scaleX(1)`, opacity: 0 }], 360, { easing: 'linear' });
+    }
+    return wait(110);
+  }
+  const from = c.name === 'Meteor' ? [p1[0] + 80, -30] : p0, arc = c.name === 'Meteor' ? 0 : 34, ms = c.name === 'Meteor' ? 320 : 290;
+  for (let i = 3; i > 0; i--) fly(fx('orb', from, s * (1 - i * 0.2), s * (1 - i * 0.2), `--c:${col}`), from, p1, arc, ms, { delay: i * 24, op: 0.5 });
+  return fly(fx('orb', from, s, s, `--c:${col}`), from, p1, arc, ms);
+}
+function impact(c, kill) {
+  const b = $('boss'), p = at(b), col = c.t === 'phys' ? '#eef6ff' : SPELL[c.name];
+  b.style.setProperty('--k', (c.t === 'phys' ? 0.4 + c.v / 30 : 0.8 + c.v / 50) + (kill ? 0.3 : 0));
+  b.classList.remove('hit'); void b.offsetWidth; b.classList.add('hit');
+  flashOn(b, c.t === 'phys' ? RED : col, 0.75);
+  num(at(b, 0.5, 0.3), '+' + c.v, c.t === 'phys' ? '#f66' : col, 24 + c.v / 2);
+  if (c.t === 'phys') {
+    if (!still()) anim(fx('slash', p, b.offsetWidth * 1.3, 5 + c.v * 0.6), [{ transform: 'rotate(-38deg) scaleX(0)', opacity: 1 }, { transform: 'rotate(-38deg) scaleX(1)', opacity: 1, offset: 0.35 }, { transform: 'rotate(-38deg) scaleX(1.05)', opacity: 0 }], 340);
+    burst(p, { n: 3 + Math.round(c.v / 2), c: '#eef6ff', d: 40 + c.v * 3, s: 4 });
+  } else {
+    ring(p, 50 + c.v * 2.5, col, 450);
+    burst(p, { n: 6 + Math.round(c.v / 6), c: col, d: 45 + c.v * 2, s: 5 + c.v / 10 });
+    if (c.name === 'Cataclysm') { screen(col, 0.4); shake(7, 420); SFX.boom(); }
+    else if (c.name === 'Meteor') shake(4, 300);
+  }
+  if (kill) killFx();
+}
+// The hit that first takes the boss to zero: white flash, shatter.
+function killFx() {
+  const b = $('boss'), p = at(b);
+  flashOn(b, '#fff', 1, 420);
+  burst(p, { n: 10, c: '#fff', d: 110, s: 9, ms: 620, cls: 'shard' });
+  ring(p, 170, '#fff', 520, 60);
+  shake(5, 320); SFX.boom();
+}
+// Multipliers: flare grows with the multiplier, and one step more when it adds 50+ damage.
+function multFx(c, from, to) {
+  const lvl = Math.min(4, { 1.5: 1, 2: 2, 3: 3 }[c.v] + (to - from >= 50 ? 1 : 0)), ch = $('champ'), pc = at(ch), d = $('dmg'), w = ch.offsetWidth;
+  num(at(ch, 0.5, 0.3), '×' + c.v, GOLD, 26 + lvl * 6, 700 + lvl * 100);
+  ring(pc, w * 1.3, GOLD, 520);
+  punch(d.parentElement, 1.2 + lvl * 0.15);
+  if (lvl >= 2) { ring(pc, w * 1.8, GOLD, 600, 120); flashOn(ch, GOLD, 0.7); shake(3, 280); }
+  if (lvl >= 3) {
+    // ×3 itself is always one notch bigger than a ×2 that earned the same level.
+    const big = lvl - 3 + (c.v === 3 ? 1 : 0);
+    stamp('×' + c.v, 96 + big * 18, 1000); rays(pc, w * (2.2 + big * 0.5), 1000); screen(GOLD, 0.25 + big * 0.1);
+    shake(4 + big * 2, 520); burst(pc, { n: 8 + big * 3, c: GOLD, d: 110 + big * 30, s: 6, ms: 700 }); SFX.fury();
+    if (big) ring(pc, w * 2.4, '#fff3b0', 650, 200);
+    countNum(d, from, to, 380);
+  } else setNum(d, to);
+  return lvl;
+}
+// The win, by tier: a coin burst at 3-4; from 5 a growing celebration with the pay stamped in the middle.
+function celebrate(tier, pay) {
+  const wp = at($('win'));
+  if (tier >= 3) {
+    burst(wp, { n: 8, c: GOLD, d: 60 });
+    if (!still()) for (let i = 0; i < 6; i++) { const x = rnd(-60, 60), e = fx('coin', wp, 12);
+      anim(e, [{ transform: 'translate(0, 0)' }, { transform: `translate(${x * 0.6}px, ${rnd(-110, -70)}px)`, offset: 0.45 }, { transform: `translate(${x}px, 10px)`, opacity: 0 }], 700, { easing: 'ease-in-out', delay: i * 30 }); }
+  }
+  if (tier < 5) return;
+  const lvl = tier - 4;
+  screen(GOLD, 0.25 + lvl * 0.1, 500); stamp(pay + 'x', 64 + lvl * 16, 1100 + lvl * 150);
+  anim($('win').parentElement, [{ transform: 'scale(1)' }, { transform: 'scale(1.12)' }, { transform: 'scale(1)' }], 380, { iterations: 2 + lvl });
+  if (!still()) for (let i = 0; i < 10 + lvl * 4; i++) { const x = rnd(0, innerWidth), e = fx(i % 3 ? 'dot' : 'coin', [x, -12], rnd(5, 10), undefined, `--c:${GOLD}`);
+    anim(e, [{ transform: 'translateY(0)' }, { transform: `translate(${rnd(-30, 30)}px, ${innerHeight + 30}px) rotate(${rnd(-3, 3)}turn)` }], rnd(800, 1000), { easing: 'ease-in', delay: rnd(0, 600) }); }
+  if (lvl === 3) { const p = at(document.querySelector('.arena'), 0.5, 0.42); rays(p, 420, 1400); screen('#fff', 0.3, 300); shake(8, 500); burst(p, { n: 14, c: GOLD, d: 160, s: 7, ms: 800 }); SFX.fury(); }
+}
 
 // Meter: eight equal segments, one per payout tier.
 const BREAKS = [-60, 0, 10, 25, 50, 100, 200, 400, 800];
@@ -310,7 +494,7 @@ function resetBoard() {
   for (const id of ['champ', 'boss']) { $(id).classList.remove('dead', 'lean', 'beaten', 'hit', 'tap'); $(id).classList.add('down'); }
   $('line').querySelectorAll('.mini').forEach((x, i) => { x.classList.remove('now', 'void', 'tap'); x.style.setProperty('--d', i * 45 + 'ms'); x.classList.add('down'); });
   $('dmg').textContent = '–'; $('mana').textContent = '–'; $('hp').textContent = '–';
-  setOverkill(null); renderMeter();
+  setOverkill(null); renderMeter(); clearFx();
 }
 // Fast play flips everything for the player.
 function auto() { if (S.turbo && S.phase !== 'idle') setTimeout(next, 120); }
@@ -360,12 +544,17 @@ async function flipCard(el) {
   el.classList.add(c.t, 'now');
   reveal(el); SFX.flip();
   await wait(220);
-  log(ev.text); SFX[ev.fx]();
-  setNum($('dmg'), ev.dmg); setNum($('mana'), ev.mana); setOverkill(ev.dmg - R.boss.hp);
-  // A hit knocks the boss back, harder for spells and multipliers; a fizzled spell droops instead.
+  log(ev.text);
+  // The attack flies to the boss (a multiplier to the DMG number); numbers, recoil and sound land on impact.
+  const prev = flips > 1 ? R.events[flips - 2].dmg : R.champ.atk, kill = prev < R.boss.hp && ev.dmg >= R.boss.hp;
+  await launch(el, c, ev.voided);
+  SFX[ev.fx]();
+  setNum($('mana'), ev.mana); setOverkill(ev.dmg - R.boss.hp);
+  let hold = 400;
   if (ev.voided) el.classList.add('void');
-  else { const b = $('boss'); b.style.setProperty('--k', { phys: .5, spell: 1, mult: 1.6 }[c.t]); b.classList.remove('hit'); void b.offsetWidth; b.classList.add('hit'); }
-  await wait(ev.fx === 'mult' ? 800 : 500);
+  else if (c.t === 'mult') { hold = multFx(c, prev, ev.dmg) >= 3 ? 1050 : 650; if (kill) killFx(); }
+  else { setNum($('dmg'), ev.dmg); impact(c, kill); }
+  await wait(kill ? hold + 150 : hold);
   if (flips === 6) return finish();
   lock = false;
   if (queued) { const q = queued; queued = null; return flipCard(q); }
@@ -382,14 +571,15 @@ async function finish() {
     const big = pay >= 5, even = win <= bet;
     log(`${R.boss.name} falls! Overkill +${R.overkill} · ${pay}x · you ${even ? 'get back' : 'win'} ${fmt(win)}`, big ? 'bigwin' : even ? '' : 'win');
     (big ? SFX.big : even ? SFX.back : SFX.win)();
-    S.balance += win; countUp($('win'), win);
+    S.balance += win; countUp($('win'), win); celebrate(R.tier, pay);
   } else {
     $('boss').classList.add('lean'); $('champ').classList.add('beaten');
     log(`${R.boss.name} survives with ${-R.overkill} HP left.`, 'lose');
     SFX.lose();
   }
-  await wait(win > 0 ? 700 : 300);
-  S.phase = 'idle'; lock = false; renderHud(); renderStances();
+  // The round ends once its last effects are gone, so #fx is empty when PLAY comes back.
+  await Promise.all([wait(win > 0 ? 700 : 300), Promise.race([Promise.all(live), wait(2600)])]);
+  clearFx(); S.phase = 'idle'; lock = false; renderHud(); renderStances();
 }
 
 // The main button and the spacebar: start a round, or flip the next card.

@@ -7,6 +7,10 @@ https://compulsed.github.io/games/bossfall/.
 The game is `index.html`, the rules in `engine.js` and the pictures in `art/`:
 no build step and no external requests.
 
+- `3d.html` is the same game with the board drawn as a 3D scene in Three.js
+  (https://compulsed.github.io/games/bossfall/3d.html). The library is in
+  `vendor/`, minified with esbuild from the `three@0.187.0` npm package.
+  `shoot3d.js` is its phone test.
 - `engine.js` holds the champions, cards, bosses, payouts and `playRound()`,
   which decides a whole round up front. The pages only show the result.
 - `sim.js` measures tier odds and return to player for each stance:
