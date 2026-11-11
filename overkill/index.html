@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Overkill</title>
+<style>
+  :root {
+    --bg: #120e0d; --panel: #221a18; --panel2: #32251f; --line: #5a4534;
+    --gold: #f0c35a; --text: #f3e9d8; --mute: #b3a08c; --good: #86d67c; --bad: #e2574c; --mana: #58b0ff; --curse: #b07be0;
+    --spd: 1;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+  button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; touch-action: manipulation; }
+  button:disabled { opacity: .4; cursor: default; }
+  .serif { font-family: Georgia, "Times New Roman", serif; }
+  #app { max-width: 560px; margin: 0 auto; height: 100vh; height: 100dvh; display: flex; flex-direction: column; user-select: none; -webkit-user-select: none; position: relative; }
+
+  /* Top bar */
+  header { display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: linear-gradient(#3a2b22, #241a15); border-bottom: 2px solid #0b0807; box-shadow: 0 2px 8px rgba(0, 0, 0, .5); z-index: 3; }
+  h1 { font-family: Georgia, serif; font-size: 19px; letter-spacing: 2px; margin: 0; color: var(--gold); text-shadow: 0 2px 0 #000; flex: 1; }
+  .purse { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 14px; background: rgba(0, 0, 0, .35); font-weight: 800; font-size: 15px; }
+  .coin { width: 14px; height: 14px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffe9a6, #d59a1e 70%); box-shadow: 0 0 0 1.5px #7a5510; flex: none; }
+  .round { width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid var(--line); background: var(--panel); font-weight: 700; font-size: 14px; }
+  .round.on { border-color: var(--gold); color: var(--gold); }
+
+  /* Battle scene */
+  .scene { flex: 1; min-height: 190px; position: relative; overflow: hidden; display: flex; align-items: flex-end; justify-content: space-between; padding: 0 5% 12px;
+    background:
+      radial-gradient(ellipse 60% 40% at 72% 38%, rgba(226, 87, 76, .22), transparent 70%),
+      radial-gradient(ellipse 50% 35% at 22% 50%, rgba(88, 176, 255, .12), transparent 70%),
+      linear-gradient(#1b1526 0%, #2c1f2e 45%, #3b2a26 72%, #1d1512 72.5%, #120e0d 100%); }
+  .scene::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(90deg, transparent 0 13%, rgba(0, 0, 0, .22) 13% 17%, transparent 17% 30%); mask-image: linear-gradient(#000 0 72%, transparent 72%); -webkit-mask-image: linear-gradient(#000 0 72%, transparent 72%); }
+  .fig { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 44%; z-index: 1; transition: opacity .3s; }
+  .fig.off { opacity: .28; }
+  .sprite { font-size: min(17vw, 76px); line-height: 1.1; filter: drop-shadow(0 6px 4px rgba(0, 0, 0, .6)); animation: bob 2.6s ease-in-out infinite; transition: transform .25s, filter .5s, opacity .5s; }
+  .boss .sprite { font-size: min(24vw, 108px); animation-duration: 3.4s; }
+  @keyframes bob { 50% { translate: 0 -5px; } }
+  .ground { width: 70%; height: 10px; border-radius: 50%; background: rgba(0, 0, 0, .5); filter: blur(3px); margin-top: -8px; }
+  .fname { font-family: Georgia, serif; font-weight: 700; font-size: 14px; text-shadow: 0 1px 2px #000; white-space: nowrap; min-height: 17px; }
+  .sprite.enter { animation: enter calc(.4s * var(--spd)) ease-out; }
+  @keyframes enter { from { transform: translateY(-30px) scale(.6); opacity: 0; } }
+  .sprite.lunge { animation: lunge .45s ease-in-out; }
+  @keyframes lunge { 35% { transform: translateX(-14px); } 60% { transform: translateX(70px) scale(1.15); } }
+  .sprite.shake { animation: shake .35s; }
+  @keyframes shake { 20% { transform: translateX(9px); filter: brightness(2.2) drop-shadow(0 0 10px #fff); } 45% { transform: translateX(-8px); } 70% { transform: translateX(5px); } }
+  .sprite.buff { animation: buff .5s; }
+  @keyframes buff { 40% { transform: scale(1.25); filter: brightness(1.5) drop-shadow(0 0 14px var(--gold)); } }
+  .sprite.cursed { animation: cursed .5s; }
+  @keyframes cursed { 40% { transform: scale(.8); filter: brightness(.6) drop-shadow(0 0 14px var(--curse)); } }
+  .sprite.dead { animation: none; transform: rotate(80deg) translate(18px, 10px); filter: grayscale(1) brightness(.5); opacity: .7; }
+  .sprite.laugh { animation: laugh .35s 3; }
+  @keyframes laugh { 50% { transform: scale(1.12) rotate(-4deg); } }
+  .slash { position: absolute; left: 10%; right: 10%; top: 34%; height: 6px; border-radius: 3px; background: linear-gradient(90deg, transparent, #fff, var(--gold), transparent); transform: rotate(-28deg) scaleX(0); animation: slash .35s ease-out; pointer-events: none; }
+  @keyframes slash { 40% { transform: rotate(-28deg) scaleX(1.2); opacity: 1; } 100% { transform: rotate(-28deg) scaleX(1.4); opacity: 0; } }
+
+  .atk { display: flex; align-items: baseline; gap: 5px; padding: 3px 12px; border-radius: 14px; background: rgba(0, 0, 0, .55); border: 1.5px solid var(--line); font-weight: 800; }
+  .atk b { font-size: 22px; color: var(--gold); display: inline-block; }
+  .atk small { font-size: 11px; color: var(--mute); font-weight: 600; white-space: nowrap; }
+  .atk .k { font-size: 10px; letter-spacing: 1px; color: var(--mute); }
+  .hpbar { position: relative; width: 100%; height: 20px; border-radius: 10px; background: #1a0d0c; border: 2px solid #0a0606; box-shadow: 0 0 0 1px #6b3a34; overflow: hidden; }
+  .hpfill { position: absolute; inset: 0 auto 0 0; width: 100%; background: linear-gradient(#f0665a, #b3261f); transition: width calc(.35s * var(--spd)) ease-out; }
+  .hpghost { position: absolute; top: 0; bottom: 0; width: 0; background: repeating-linear-gradient(-45deg, rgba(255, 228, 150, .95) 0 5px, rgba(240, 195, 90, .6) 5px 10px); transition: all calc(.35s * var(--spd)) ease-out; }
+  .hpbar span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; text-shadow: 0 1px 2px #000, 0 0 3px #000; }
+  .over { font-size: 11px; font-weight: 700; color: var(--mute); min-height: 14px; white-space: nowrap; }
+  .over.yes { color: var(--gold); }
+  .bump { animation: bump .3s; }
+  @keyframes bump { 40% { transform: scale(1.4); } }
+
+  .float { position: absolute; left: 50%; top: 8%; font-weight: 900; font-size: 30px; text-shadow: 0 2px 0 #000, 0 0 8px rgba(0, 0, 0, .8); pointer-events: none; white-space: nowrap; animation: floatUp 1s ease-out forwards; z-index: 4; }
+  .float.dmg { color: #ff8a7a; } .float.up { color: var(--gold); } .float.down { color: var(--curse); } .float.fizz { color: var(--mute); font-size: 18px; } .float.huge { font-size: 44px; color: #fff; }
+  @keyframes floatUp { 0% { transform: translate(-50%, 10px) scale(.5); opacity: 0; } 20% { transform: translate(-50%, -6px) scale(1.25); opacity: 1; } 100% { transform: translate(-50%, -54px) scale(1); opacity: 0; } }
+
+  /* The card being played, shown large mid-scene */
+  #show { position: absolute; left: 50%; top: 46%; width: 0; height: 0; z-index: 5; pointer-events: none; perspective: 700px; }
+  .showcard { position: absolute; width: var(--sw); height: calc(var(--sw) * 1.4); left: calc(var(--sw) / -2); top: calc(var(--sw) * -.7); transform-style: preserve-3d; animation: showIn calc(.32s * var(--spd)) ease-out both; }
+  .showcard > * { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+  .showcard .back { transform: rotateY(180deg); }
+  .showcard.out { animation: showOut calc(.26s * var(--spd)) ease-in both; }
+  .showcard.fizzle { animation: fizzle calc(.45s * var(--spd)) ease-in both; }
+  @keyframes showIn { from { transform: translate(var(--dx), var(--dy)) scale(var(--s)) rotateY(180deg); } to { transform: none; } }
+  @keyframes showOut { to { transform: translate(var(--tx), var(--ty)) scale(.12); opacity: .2; } }
+  @keyframes fizzle { 30% { transform: rotate(-4deg); filter: grayscale(1); } to { transform: translateY(90px) rotate(14deg) scale(.7); opacity: 0; filter: grayscale(1); } }
+
+  /* Card faces */
+  .face { border-radius: 9%/6.5%; border: 3px solid var(--c); background: linear-gradient(160deg, var(--c2), #17110f 85%); box-shadow: 0 8px 24px rgba(0, 0, 0, .7), inset 0 0 0 1.5px rgba(255, 255, 255, .12); display: flex; flex-direction: column; align-items: stretch; padding: 6% 6% 5%; text-align: center; container-type: inline-size; }
+  .face.mult { --c: #d9a13a; --c2: #7a3a1c; }
+  .face.hex { --c: #9a63d1; --c2: #3c2358; }
+  .face.spell { --c: #4f9fe6; --c2: #1c3f6e; }
+  .face .cname { font-family: Georgia, serif; font-weight: 700; font-size: 11cqw; padding: 2% 0 3%; background: rgba(0, 0, 0, .4); border-radius: 6cqw; margin: 0 4cqw; text-shadow: 0 1px 1px #000; white-space: nowrap; }
+  .face .cart { flex: 1; margin: 5% 0 0; border-radius: 5cqw; border: 2px solid rgba(0, 0, 0, .5); background: radial-gradient(circle at 50% 40%, rgba(255, 255, 255, .28), rgba(0, 0, 0, .35) 75%); display: flex; align-items: center; justify-content: center; font-size: 34cqw; line-height: 1; }
+  .face .ctype { align-self: center; margin-top: -6%; padding: 1% 9%; border-radius: 8cqw; background: var(--c); color: #1a120c; font-size: 7cqw; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; z-index: 1; }
+  .face .cdesc { margin-top: 4%; min-height: 26%; padding: 4% 3%; border-radius: 5cqw; background: rgba(0, 0, 0, .45); font-size: 9cqw; line-height: 1.25; display: flex; align-items: center; justify-content: center; }
+  .face .cdesc b { color: var(--gold); font-size: 1.25em; }
+  .face .cost { position: absolute; left: -5%; top: -3.5%; width: 26cqw; height: 26cqw; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #bfe3ff, #2c7fd6 60%, #184a86); border: 2px solid #0b2747; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 15cqw; text-shadow: 0 1px 2px #000; }
+  .back { border-radius: 9%/6.5%; border: 3px solid #8a6a3c; background: repeating-linear-gradient(45deg, rgba(0, 0, 0, .18) 0 6px, transparent 6px 12px), radial-gradient(circle, #6a3327, #33191a); box-shadow: 0 3px 8px rgba(0, 0, 0, .6), inset 0 0 0 2px rgba(0, 0, 0, .35); display: flex; align-items: center; justify-content: center; color: #d9a13a; font-size: 26px; text-shadow: 0 0 8px rgba(240, 195, 90, .7); }
+
+  /* Result banner */
+  #banner { position: absolute; left: 50%; top: 6%; transform: translateX(-50%); z-index: 6; text-align: center; padding: 8px 22px 10px; border-radius: 14px; background: rgba(10, 6, 5, .86); border: 2px solid var(--line); display: none; white-space: nowrap; pointer-events: none; }
+  #banner.open { display: block; animation: pop .4s cubic-bezier(.2, 1.6, .4, 1); }
+  #banner.win { border-color: var(--gold); box-shadow: 0 0 26px rgba(240, 195, 90, .45); }
+  #banner.big { animation: pop .4s cubic-bezier(.2, 1.6, .4, 1), glow 1s .4s infinite; }
+  @keyframes pop { from { transform: translateX(-50%) scale(.3); opacity: 0; } }
+  @keyframes glow { 50% { box-shadow: 0 0 46px rgba(240, 195, 90, .95); } }
+  #banner .bt { font-family: Georgia, serif; font-weight: 700; font-size: 22px; letter-spacing: 2px; color: var(--mute); }
+  #banner.win .bt { color: var(--gold); }
+  #banner .bs { font-size: 12px; color: var(--mute); margin-top: 2px; }
+  #banner .bw { font-size: 30px; font-weight: 900; color: #fff; margin-top: 2px; }
+  #banner .bw small { font-size: 15px; color: var(--gold); margin-right: 8px; }
+  .burst { position: absolute; left: 50%; top: 22%; z-index: 5; pointer-events: none; }
+  .burst i { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffe9a6, #d59a1e 70%); animation: fly 1.1s ease-out forwards; }
+  @keyframes fly { to { transform: translate(var(--bx), var(--by)); opacity: 0; } }
+  .hint { position: absolute; left: 0; right: 0; top: 10%; text-align: center; font-size: 14px; color: var(--mute); padding: 0 24px; line-height: 1.4; z-index: 2; }
+  .hint b { display: block; font-family: Georgia, serif; font-size: 20px; color: var(--text); margin-bottom: 4px; }
+
+  /* Payout ladder */
+  .ladder { display: flex; gap: 2px; padding: 5px 8px; background: #0e0a09; border-top: 2px solid #0b0807; }
+  .rung { flex: 1; min-width: 0; text-align: center; padding: 3px 0; border-radius: 6px; background: var(--panel); border: 1.5px solid transparent; line-height: 1.15; transition: all .2s; }
+  .rung b { display: block; font-size: 11px; letter-spacing: -.3px; }
+  .rung small { display: block; font-size: 8px; color: var(--mute); white-space: nowrap; }
+  .rung.past { background: #4a3a1c; }
+  .rung.lit { background: var(--gold); color: #241703; border-color: #fff; transform: scale(1.1); box-shadow: 0 0 12px rgba(240, 195, 90, .7); }
+  .rung.lit small { color: #5a3d08; }
+
+  /* Mana orb + played cards */
+  .tray { display: flex; align-items: center; gap: 8px; padding: 4px 10px 0; }
+  .orb { width: 50px; height: 50px; flex: none; border-radius: 50%; background: radial-gradient(circle at 35% 28%, #c9e8ff, #2f86de 55%, #123c70); border: 3px solid #0b2747; box-shadow: 0 0 14px rgba(88, 176, 255, .55), inset 0 -6px 10px rgba(0, 0, 0, .35); display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 900; font-size: 17px; line-height: 1; text-shadow: 0 1px 2px #000; position: relative; }
+  .orb small { font-size: 8px; letter-spacing: 1px; font-weight: 700; margin-top: 2px; }
+  .orb.empty { filter: grayscale(.8) brightness(.7); box-shadow: none; }
+  .orb.shake { animation: shake .35s; }
+  .played { flex: 1; display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+  .chip { height: 34px; border-radius: 7px; border: 1.5px dashed var(--line); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; line-height: 1.1; min-width: 0; }
+  .chip i { font-style: normal; font-size: 12px; }
+  .chip.mult { border: 1.5px solid #d9a13a; background: #4a2c16; color: var(--gold); }
+  .chip.hex { border: 1.5px solid #9a63d1; background: #2f1d45; color: var(--curse); }
+  .chip.spell { border: 1.5px solid #4f9fe6; background: #173255; color: #bfe0ff; }
+  .chip.fizz { border: 1.5px solid #555; background: #222; color: #777; text-decoration: line-through; }
+  .chip.new { animation: pop2 .3s; }
+  @keyframes pop2 { from { transform: scale(.3); } }
+
+  /* Hand */
+  .hand { position: relative; height: min(34vw, 150px); flex: none; --cw: min(21vw, 92px); }
+  .hcard { position: absolute; left: 50%; bottom: 10px; width: var(--cw); height: calc(var(--cw) * 1.4); margin-left: calc(var(--cw) / -2); transform: translate(var(--x), var(--y)) rotate(var(--r)); transition: transform .28s ease-out, opacity .2s; cursor: pointer; }
+  .hcard.ready { animation: ready 1.6s ease-in-out infinite; }
+  @keyframes ready { 50% { box-shadow: 0 0 16px rgba(240, 195, 90, .9); border-color: var(--gold); } }
+  @media (hover: hover) { .hcard.ready:hover { transform: translate(var(--x), calc(var(--y) - 16px)) rotate(var(--r)) scale(1.06); z-index: 2; } }
+  .handhint { position: absolute; left: 0; right: 0; bottom: 42%; text-align: center; font-size: 12px; color: var(--mute); }
+
+  /* Bet row */
+  .hud { display: flex; gap: 6px; align-items: stretch; padding: 6px 10px calc(10px + env(safe-area-inset-bottom)); background: linear-gradient(#241a15, #17100d); border-top: 2px solid #0b0807; }
+  .sq { width: 40px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--panel); font-size: 22px; font-weight: 700; }
+  .pill { width: 88px; background: rgba(0, 0, 0, .35); border: 1.5px solid var(--line); border-radius: 10px; padding: 4px 6px; text-align: center; }
+  .pill .k { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--mute); }
+  .pill .v { font-size: 17px; font-weight: 800; }
+  #go { flex: 1; min-height: 52px; border-radius: 12px; background: linear-gradient(#f6d37a, #c98f1e); color: #2a1a00; font-family: Georgia, serif; font-weight: 700; font-size: 20px; letter-spacing: 2px; box-shadow: 0 3px 0 #7d560c, inset 0 1px 0 rgba(255, 255, 255, .5); }
+  #go:active { transform: translateY(2px); box-shadow: 0 1px 0 #7d560c; }
+  #go.card { background: linear-gradient(#f08a6e, #b83a2a); color: #fff; box-shadow: 0 3px 0 #6b1d14, inset 0 1px 0 rgba(255, 255, 255, .35); }
+
+  /* Rules sheet */
+  #modal { position: fixed; inset: 0; background: rgba(8, 5, 4, .82); display: none; align-items: flex-end; justify-content: center; z-index: 10; }
+  #modal.open { display: flex; }
+  .sheet { width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; background: var(--panel); border: 1.5px solid var(--line); border-radius: 16px 16px 0 0; padding: 14px 16px 24px; font-size: 14px; line-height: 1.45; user-select: text; -webkit-user-select: text; }
+  .sheet h2 { font-family: Georgia, serif; color: var(--gold); margin: 0 0 6px; font-size: 20px; }
+  .sheet h3 { font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--mute); margin: 16px 0 6px; }
+  .sheet p { margin: 6px 0; }
+  .sheet table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .sheet td, .sheet th { padding: 4px 6px; border-bottom: 1px solid var(--line); text-align: left; }
+  .sheet th { font-size: 11px; color: var(--mute); font-weight: 600; }
+  .sheet .r { text-align: right; }
+  .sheet .close { width: 100%; margin-top: 16px; padding: 12px; border-radius: 12px; background: var(--panel2); border: 1.5px solid var(--line); font-weight: 700; }
+  .sheet .fine { font-size: 12px; color: var(--mute); }
+
+  @media (max-width: 360px) {
+    h1 { font-size: 15px; letter-spacing: 1px; }
+    .rung b { font-size: 10px; } .rung small { font-size: 7px; }
+    #go { font-size: 16px; letter-spacing: 1px; white-space: nowrap; }
+    .pill { width: 72px; } .sq { width: 34px; }
+  }
+  /* Popout / mini player: no room for the hand, so the main button plays the cards. */
+  @media (max-height: 420px) {
+    header { padding: 3px 10px; } h1 { font-size: 15px; } .round { width: 26px; height: 26px; font-size: 12px; }
+    .scene { min-height: 0; padding-bottom: 4px; }
+    .sprite, .boss .sprite { font-size: min(18vh, 44px); }
+    .ground, .over, .hint, .tray, .hand { display: none; }
+    .fig { gap: 1px; } .fname { font-size: 11px; min-height: 0; } .atk { padding: 0 10px; } .atk b { font-size: 15px; } .hpbar { height: 16px; }
+    .ladder { padding: 2px 8px; } .rung small { display: none; }
+    .hud { padding: 3px 10px 4px; } #go { min-height: 36px; font-size: 16px; } .pill .v { font-size: 14px; }
+    #banner { top: 2%; padding: 3px 14px 4px; } #banner .bt { font-size: 15px; } #banner .bw { font-size: 18px; } #banner .bs { display: none; }
+  }
+  @media (max-height: 620px) and (min-height: 421px) { .hand { height: min(28vw, 118px); --cw: min(17vw, 74px); } .hint b { font-size: 16px; } .hint { font-size: 12px; top: 4%; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>OVERKILL</h1>
+    <div class="purse" title="Balance (demo credits)"><span class="coin"></span><span id="bal"></span></div>
+    <button class="round" id="bSound" aria-label="Sound on or off" title="Sound">♪</button>
+    <button class="round" id="bTurbo" aria-label="Fast play on or off" title="Fast play: plays every card for you">»</button>
+    <button class="round" id="bInfo" aria-label="Rules and payouts" title="Rules">i</button>
+  </header>
+
+  <div class="scene" id="scene">
+    <div class="hint" id="hint"><b>Slay the boss. Then keep hitting.</b>Draw a champion and six cards. The more damage past the boss's HP, the bigger the payout.</div>
+    <div class="fig off" id="champFig">
+      <div class="sprite" id="champSprite">❔</div>
+      <div class="ground"></div>
+      <div class="fname" id="champName">Your champion</div>
+      <div class="atk"><span class="k">ATK</span><b id="atk">–</b><small id="atkCalc"></small></div>
+      <div class="over">&nbsp;</div>
+    </div>
+    <div class="fig boss off" id="bossFig">
+      <div class="sprite" id="bossSprite">❔</div>
+      <div class="ground"></div>
+      <div class="fname" id="bossName">The boss</div>
+      <div class="hpbar"><div class="hpfill" id="hpFill"></div><div class="hpghost" id="hpGhost"></div><span id="hpText">–</span></div>
+      <div class="over" id="over">&nbsp;</div>
+    </div>
+    <div id="show"></div>
+    <div id="banner"></div>
+  </div>
+
+  <div class="ladder" id="ladder"></div>
+
+  <div class="tray">
+    <div class="orb empty" id="orb" title="Mana: pays for spells"><span id="mana">–</span><small>MANA</small></div>
+    <div class="played" id="played"></div>
+  </div>
+
+  <div class="hand" id="hand"><div class="handhint" id="handhint">Your hand is dealt here</div></div>
+
+  <div class="hud">
+    <button class="sq" id="bMinus" aria-label="Lower bet">−</button>
+    <div class="pill"><div class="k">Bet</div><div class="v" id="bet"></div></div>
+    <button class="sq" id="bPlus" aria-label="Raise bet">+</button>
+    <button id="go">FIGHT</button>
+  </div>
+</div>
+
+<div id="modal"><div class="sheet" id="sheet"></div></div>
+
+<script src="engine.js"></script>
+<script>
+const E = ENGINE;
+const byId = list => Object.fromEntries(list.map(x => [x.id, x]));
+const CHAMP = byId(E.CHAMPS), CARD = byId(E.CARDS), BOSS = byId(E.BOSSES);
+const $ = id => document.getElementById(id);
+const round2 = n => Math.round(n * 100) / 100;
+const fmt = n => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const num = n => n.toLocaleString('en-US');
+const multText = v => '×' + v;
+
+// Stand-in for the Stake Engine RGS, shaped like its calls: authenticate returns the
+// balance and bet levels, play takes the bet and returns a finished round. On the real
+// platform these become requests to the rgs_url server and engine.js runs there, not here.
+const RGS = (() => {
+  const KEY = 'overkill.v1', START = 1000;
+  const LEVELS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100];
+  let st = { balance: START, bet: 1 };
+  try { Object.assign(st, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { /* storage blocked: play without saving */ }
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) { /* as above */ } };
+  return {
+    async authenticate() { return { balance: st.balance, config: { betLevels: LEVELS, defaultBet: 1 }, lastBet: st.bet }; },
+    // The bet and the win are both settled here, so a refresh mid-round loses nothing.
+    async play(amount) {
+      if (amount > st.balance) throw new Error('ERR_IPB');
+      const book = E.playRound();
+      const payout = round2(amount * book.payoutMultiplier);
+      st.balance = round2(st.balance - amount + payout); st.bet = amount; save();
+      return { book, payout, balance: st.balance };
+    },
+    async refill() { st.balance = START; save(); return st.balance; },
+    setBet(a) { st.bet = a; save(); },
+  };
+})();
+
+// phase: idle → deal (boss, champion and hand arrive) → cards (play six) → strike → idle
+const S = { balance: 0, bets: [1], betIdx: 0, phase: 'idle', turbo: false, sound: true };
+let R = null, payout = 0, bet = 0, played = 0, lock = false, queued = null, mult = 1;
+const wait = ms => new Promise(r => setTimeout(r, S.turbo ? ms * 0.4 : ms));
+
+// Sound: small synth tones, no audio files.
+let actx = null;
+function tone(freq, dur = 0.12, type = 'triangle', when = 0, vol = 0.12, slide = 0) {
+  if (!S.sound) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime + when;
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + dur);
+  } catch (e) { /* no audio available */ }
+}
+const SFX = {
+  deal: () => tone(700, 0.04, 'square', 0, 0.03),
+  draw: () => tone(520, 0.07, 'square', 0, 0.05, 780),
+  boss: () => tone(110, 0.5, 'sawtooth', 0, 0.12, 70),
+  champ: () => { tone(330, 0.1, 'triangle'); tone(495, 0.16, 'triangle', 0.08); },
+  mult: v => [440, 554, 659, 880, 1109, 1319].slice(0, v >= 10 ? 6 : v >= 5 ? 5 : v >= 3 ? 4 : 3).forEach((f, i) => tone(f, 0.14, 'sawtooth', i * 0.06, 0.07)),
+  hex: () => tone(300, 0.4, 'sawtooth', 0, 0.08, 90),
+  spell: () => { tone(900, 0.25, 'sine', 0, 0.1, 200); tone(120, 0.25, 'square', 0.12, 0.08, 60); },
+  fizz: () => { tone(200, 0.15, 'square', 0, 0.05); tone(150, 0.25, 'square', 0.12, 0.05); },
+  strike: () => { tone(900, 0.1, 'sawtooth', 0, 0.1, 150); tone(90, 0.4, 'square', 0.08, 0.14, 40); },
+  win: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.2, 'triangle', i * 0.1)),
+  big: () => [523, 659, 784, 1047, 1319, 1568, 2093].forEach((f, i) => tone(f, 0.32, 'triangle', i * 0.09, 0.15)),
+  lose: () => { tone(294, 0.25, 'sine'); tone(196, 0.45, 'sine', 0.18); },
+};
+
+function anim(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+function setNum(el, text) { if (el.textContent !== String(text)) { el.textContent = text; anim(el, 'bump'); } }
+function float(fig, text, cls) {
+  const f = document.createElement('div');
+  f.className = 'float ' + cls; f.textContent = text;
+  fig.appendChild(f); setTimeout(() => f.remove(), 1000);
+}
+function faceHTML(c) {
+  const hex = c.t === 'mult' && c.v < 1;
+  const desc = c.t === 'spell' ? `Deal <b>${c.v}</b> damage to the boss.` : hex ? `Your Attack is <b>halved</b>.` : `Multiply your Attack by <b>${c.v}</b>.`;
+  return `<div class="face ${hex ? 'hex' : c.t}">${c.t === 'spell' ? `<div class="cost">${c.cost}</div>` : ''}
+    <div class="cname">${c.name}</div><div class="cart">${c.icon}</div>
+    <div class="ctype">${c.t === 'spell' ? 'Spell' : hex ? 'Curse' : 'Boost ' + multText(c.v)}</div><div class="cdesc"><span>${desc}</span></div></div>`;
+}
+
+// Ladder: one rung per paying tier, lit for the damage the player is on course to deal.
+function renderLadder(tier = 0) {
+  $('ladder').innerHTML = E.TIERS.slice(1).map((t, i) =>
+    `<div class="rung ${i + 1 < tier ? 'past' : ''} ${i + 1 === tier ? 'lit' : ''}"><b>${t.pay}x</b><small>${i ? t.min + '× HP' : 'slain'}</small></div>`).join('');
+}
+// Everything the scene shows mid-round follows from: attack, spell damage dealt, boss HP.
+function setState(atk, spellDmg, opts = {}) {
+  const hp = BOSS[R.boss].hp, left = Math.max(0, hp - spellDmg), total = spellDmg + (opts.struck ? R.strike : atk);
+  const pend = opts.struck ? 0 : Math.min(left, atk);
+  const shown = opts.struck ? Math.max(0, hp - total) : left;
+  $('hpFill').style.width = (shown / hp * 100) + '%';
+  $('hpGhost').style.left = ((shown - pend) / hp * 100) + '%';
+  $('hpGhost').style.width = (pend / hp * 100) + '%';
+  $('hpText').textContent = `${num(shown)} / ${hp}`;
+  const ov = $('over'), extra = total - hp;
+  ov.className = 'over' + (extra >= 0 ? ' yes' : '');
+  ov.textContent = extra >= 0 ? `Overkill +${num(extra)} · ${(total / hp).toFixed(1)}× HP` : opts.struck ? `${num(-extra)} HP left` : `${num(-extra)} short`;
+  renderLadder(E.tierOf(total / hp));
+}
+function setAtk(atk, m) {
+  setNum($('atk'), num(atk));
+  $('atk').style.fontSize = atk >= 1000 ? '17px' : '';
+  $('atkCalc').textContent = m === 1 ? '' : m >= 100 ? multText(Math.round(m)) : `${CHAMP[R.champ].atk} ${multText(+m.toFixed(2))}`;
+}
+function setMana(m) {
+  setNum($('mana'), m);
+  $('orb').classList.toggle('empty', m === 0);
+}
+
+function renderPlayed() { $('played').innerHTML = '<div class="chip"></div>'.repeat(6); }
+function addChip(i, c, cast) {
+  const el = $('played').children[i], hex = c.t === 'mult' && c.v < 1;
+  el.className = 'chip new ' + (!cast ? 'fizz' : hex ? 'hex' : c.t);
+  el.innerHTML = c.t === 'mult' ? multText(c.v) : `<i>${c.icon}</i>${c.v}`;
+}
+// Fan the cards left in hand, Slay-the-Spire style.
+function fan() {
+  const hand = $('hand'), cards = [...hand.querySelectorAll('.hcard')], n = cards.length;
+  if (!n) return;
+  const cw = cards[0].offsetWidth, step = n > 1 ? Math.min(cw * 0.86, (hand.clientWidth - cw - 36) / (n - 1)) : 0;
+  cards.forEach((el, i) => {
+    const k = i - (n - 1) / 2;
+    el.style.setProperty('--x', (k * step) + 'px');
+    el.style.setProperty('--y', (k * k * 2.2) + 'px');
+    el.style.setProperty('--r', (k * 4) + 'deg');
+    el.style.zIndex = '';
+  });
+}
+function renderHud() {
+  const busy = S.phase !== 'idle';
+  $('bet').textContent = fmt(S.bets[S.betIdx]);
+  $('bMinus').disabled = busy || S.betIdx === 0;
+  $('bPlus').disabled = busy || S.betIdx === S.bets.length - 1;
+  const go = $('go');
+  go.textContent = S.phase === 'cards' ? 'PLAY CARD' : busy ? '…' : S.balance < S.bets[0] ? 'REFILL' : 'FIGHT';
+  go.classList.toggle('card', S.phase === 'cards');
+  $('bSound').classList.toggle('on', S.sound);
+  $('bTurbo').classList.toggle('on', S.turbo);
+  document.documentElement.style.setProperty('--spd', S.turbo ? 0.4 : 1);
+}
+function setBalance(v) { S.balance = v; $('bal').textContent = fmt(v); }
+function countUp(el, to, prefix) {
+  const t0 = performance.now(), d = S.turbo ? 350 : 1000;
+  (function f(t) { const k = Math.min(1, (t - t0) / d); el.textContent = prefix + fmt(to * k); if (k < 1) requestAnimationFrame(f); })(t0);
+}
+// Fast play plays every card for the player.
+function auto() { if (S.turbo && S.phase === 'cards') setTimeout(mainAction, 100); }
+
+async function start() {
+  if (S.balance < S.bets[0]) { setBalance(await RGS.refill()); renderHud(); return; }
+  while (S.betIdx > 0 && S.bets[S.betIdx] > S.balance) S.betIdx--;
+  bet = S.bets[S.betIdx];
+  S.phase = 'deal'; lock = true; played = 0; queued = null; mult = 1;
+  let res;
+  try { res = await RGS.play(bet); } catch (e) { S.phase = 'idle'; lock = false; renderHud(); return; }
+  R = res.book; payout = res.payout;
+  setBalance(round2(res.balance - payout));
+  renderHud(); renderPlayed(); renderLadder();
+  $('hint').style.display = 'none'; $('banner').className = ''; $('handhint').style.display = 'none';
+  document.querySelectorAll('.burst, .hcard').forEach(x => x.remove());
+
+  const boss = BOSS[R.boss], champ = CHAMP[R.champ];
+  $('champFig').classList.add('off'); $('champSprite').className = 'sprite'; $('champSprite').textContent = '❔';
+  $('champName').textContent = 'Your champion'; $('atk').textContent = '–'; $('atkCalc').textContent = ''; $('mana').textContent = '–';
+  $('bossFig').classList.remove('off');
+  $('bossSprite').className = 'sprite'; $('bossSprite').textContent = boss.icon; anim($('bossSprite'), 'enter');
+  $('bossName').textContent = boss.name;
+  $('hpFill').style.width = '100%'; $('hpGhost').style.width = '0'; $('hpText').textContent = `${boss.hp} / ${boss.hp}`;
+  $('over').className = 'over'; $('over').textContent = ' ';
+  SFX.boss();
+  await wait(550);
+
+  $('champFig').classList.remove('off');
+  $('champSprite').textContent = champ.icon; anim($('champSprite'), 'enter');
+  $('champName').textContent = champ.name;
+  setAtk(champ.atk, 1); setMana(champ.mana); setState(champ.atk, 0);
+  SFX.champ();
+  await wait(550);
+
+  // Deal six face-down cards from the left into the fan.
+  const hand = $('hand');
+  for (let i = 0; i < 6; i++) {
+    const el = document.createElement('div');
+    el.className = 'hcard back'; el.textContent = '✦';
+    el.style.setProperty('--x', (-hand.clientWidth / 2 - 60) + 'px'); el.style.setProperty('--y', '30px'); el.style.setProperty('--r', '-40deg');
+    hand.appendChild(el);
+  }
+  void hand.offsetWidth;
+  [...hand.querySelectorAll('.hcard')].forEach((el, i) => { el.style.transitionDelay = (i * 60) + 'ms'; setTimeout(SFX.deal, i * 60); });
+  fan();
+  await wait(700);
+  hand.querySelectorAll('.hcard').forEach(el => { el.style.transitionDelay = ''; el.classList.add('ready'); });
+  S.phase = 'cards'; lock = false; renderHud(); auto();
+}
+
+async function playCard(el) {
+  if (S.phase !== 'cards' || !el) return;
+  // A tap during the previous card's animation is kept and played next.
+  if (lock) { queued = el; return; }
+  lock = true;
+  // The hand is face down and shuffled, so the n-th card played is the n-th card of the
+  // round, whichever one is tapped. The order of taps cannot change the result.
+  const i = played++, ev = R.events[i], c = CARD[ev.card], hex = c.t === 'mult' && c.v < 1;
+  const from = el.getBoundingClientRect(), show = $('show'), at = show.getBoundingClientRect();
+  const sw = Math.min(170, $('scene').clientHeight * 0.52, innerWidth * 0.42);
+  el.remove(); fan();
+  const sc = document.createElement('div');
+  sc.className = 'showcard';
+  sc.style.setProperty('--sw', sw + 'px');
+  sc.style.setProperty('--dx', (from.left + from.width / 2 - at.left) + 'px');
+  sc.style.setProperty('--dy', (from.top + from.height / 2 - at.top) + 'px');
+  sc.style.setProperty('--s', from.width / sw);
+  sc.innerHTML = faceHTML(c) + '<div class="back">✦</div>';
+  show.appendChild(sc);
+  SFX.draw();
+  await wait(320 + 520);
+
+  const fig = c.t === 'spell' ? $('bossFig') : $('champFig');
+  if (!ev.cast) {
+    sc.classList.add('fizzle'); SFX.fizz();
+    anim($('orb'), 'shake'); float($('bossFig'), `Needs ${c.cost} mana`, 'fizz');
+    await wait(450);
+  } else {
+    const to = fig.querySelector('.sprite').getBoundingClientRect();
+    sc.style.setProperty('--tx', (to.left + to.width / 2 - at.left) + 'px');
+    sc.style.setProperty('--ty', (to.top + to.height / 2 - at.top) + 'px');
+    sc.classList.add('out');
+    await wait(260);
+    if (c.t === 'spell') {
+      SFX.spell(); anim($('bossSprite'), 'shake'); float(fig, '-' + c.v, 'dmg'); setMana(ev.mana);
+    } else {
+      mult = ev.mult;
+      if (hex) SFX.hex(); else SFX.mult(c.v);
+      anim($('champSprite'), hex ? 'cursed' : 'buff'); float(fig, multText(c.v), hex ? 'down' : c.v >= 5 ? 'up huge' : 'up');
+      setAtk(ev.atk, ev.mult);
+    }
+  }
+  sc.remove();
+  addChip(i, c, ev.cast);
+  setState(ev.atk, ev.spellDmg);
+  await wait(c.t === 'mult' && c.v >= 5 ? 650 : 380);
+  if (played === 6) return strike();
+  lock = false;
+  if (queued && queued.isConnected) { const q = queued; queued = null; return playCard(q); }
+  queued = null; auto();
+}
+
+// After the sixth card the champion hits the boss for its final attack.
+async function strike() {
+  S.phase = 'strike'; renderHud();
+  const boss = BOSS[R.boss], won = payout > 0, pay = R.payoutMultiplier;
+  await wait(350);
+  anim($('champSprite'), 'lunge');
+  await new Promise(r => setTimeout(r, 250));
+  SFX.strike(); anim($('bossSprite'), 'shake');
+  const sl = document.createElement('div'); sl.className = 'slash'; $('bossFig').appendChild(sl); setTimeout(() => sl.remove(), 400);
+  float($('bossFig'), '-' + num(R.strike), 'dmg huge');
+  setState(R.strike, R.spellDmg, { struck: true });
+  await wait(600);
+
+  const b = $('banner');
+  if (won) {
+    $('bossSprite').className = 'sprite dead';
+    const big = pay >= 20;
+    const title = pay >= E.MAX_WIN ? 'GODSLAYER' : pay >= 150 ? 'ANNIHILATION' : big ? 'OVERKILL!' : pay >= 5 ? 'CRUSHED' : 'VICTORY';
+    b.innerHTML = `<div class="bt">${title}</div><div class="bs">${num(R.total)} damage · ${R.ratio.toFixed(1)}× ${boss.name}'s HP</div><div class="bw"><small>${pay}x</small><span id="won"></span></div>`;
+    b.className = 'open win' + (big ? ' big' : '');
+    countUp($('won'), payout, '+');
+    (big ? SFX.big : SFX.win)();
+    if (pay >= 5) burst(big ? 40 : 16);
+    setBalance(round2(S.balance + payout));
+  } else {
+    anim($('bossSprite'), 'laugh');
+    b.innerHTML = `<div class="bt">DEFEATED</div><div class="bs">${boss.name} survives with ${num(boss.hp - R.total)} HP</div>`;
+    b.className = 'open';
+    SFX.lose();
+  }
+  await wait(won ? 700 : 350);
+  S.phase = 'idle'; lock = false; renderHud();
+}
+function burst(n) {
+  const w = document.createElement('div'); w.className = 'burst';
+  for (let i = 0; i < n; i++) {
+    const c = document.createElement('i'), a = Math.random() * Math.PI * 2, d = 80 + Math.random() * 160;
+    c.style.setProperty('--bx', (Math.cos(a) * d) + 'px'); c.style.setProperty('--by', (Math.sin(a) * d + 60) + 'px');
+    c.style.animationDelay = (Math.random() * 0.25) + 's';
+    w.appendChild(c);
+  }
+  $('scene').appendChild(w); setTimeout(() => w.remove(), 1600);
+}
+
+// The main button and the spacebar: start a round, or play the next card in hand.
+function mainAction() {
+  if (S.phase === 'idle' && !lock) start();
+  else if (S.phase === 'cards') playCard($('hand').querySelector('.hcard'));
+}
+
+function openInfo() {
+  const champs = E.CHAMPS.map(c => `<tr><td>${c.icon} ${c.name}</td><td class="r">${c.atk}</td><td class="r">${c.mana}</td><td class="r">${c.w === 1 ? 'rare' : ''}</td></tr>`).join('');
+  const rows = E.CARDS.map(c => `<tr><td>${c.icon} ${c.name}</td><td>${c.t === 'spell' ? `Spell: ${c.v} damage` : `Attack ${multText(c.v)}`}</td><td class="r">${c.cost || '–'}</td><td class="r">${c.n}</td></tr>`).join('');
+  const pays = E.TIERS.map((t, i) => `<tr><td>${i === 0 ? 'Less than the boss\'s HP' : i === 1 ? 'At least the boss\'s HP' : `At least ${t.min}× the boss's HP`}</td><td class="r">${t.pay ? t.pay + 'x' : 'no win'}</td></tr>`).join('');
+  $('sheet').innerHTML = `
+    <h2>How Overkill works</h2>
+    <p>Each round you are dealt seven cards: one <b>champion</b> and a hand of <b>six face-down cards</b> from a ${E.CARDS.reduce((a, c) => a + c.n, 0)}-card deck. A random boss blocks the way.</p>
+    <p>Your champion has an <b>Attack</b> and some <b>mana</b>. Tap the cards in your hand to play them, in any order.</p>
+    <p><b>Boosts</b> multiply your champion's Attack, from ×1.5 up to ×10. They stack: ×2 then ×5 is ×10. A <b>Curse</b> halves it.<br>
+    <b>Spells</b> hit the boss straight away, but cost mana. If you don't have enough mana left, the spell fizzles and does nothing.</p>
+    <p>After the sixth card your champion strikes the boss for its final Attack. Your total damage is the spells that landed plus that strike. Deal at least the boss's HP to win. Every multiple of its HP beyond that pays more.</p>
+    <p class="fine">The striped part of the boss's HP bar is the strike you have lined up so far. The lit step on the ladder is what you would win if the round ended now.</p>
+    <h3>Payouts (× bet)</h3>
+    <table><tr><th>Total damage</th><th class="r">Pays</th></tr>${pays}</table>
+    <p>Return to player: <b>${E.RTP}%</b>. Maximum win: <b>${num(E.MAX_WIN)}x</b> the bet. About 1 round in 3 wins.</p>
+    <h3>Champions</h3>
+    <table><tr><th>Champion</th><th class="r">Attack</th><th class="r">Mana</th><th></th></tr>${champs}</table>
+    <h3>Bosses</h3>
+    <p>${E.BOSSES.map(b => `${b.icon} ${b.name} (${b.hp} HP)`).join(', ')}. Each is equally likely.</p>
+    <h3>Cards</h3>
+    <table><tr><th>Card</th><th>Effect</th><th class="r">Mana</th><th class="r">In deck</th></tr>${rows}</table>
+    <p class="fine">The hand is shuffled and face down, so whichever card you tap is the next card of the round. The order you tap them in does not change the result.</p>
+    <h3>Buttons</h3>
+    <p><b>−</b> / <b>+</b> change the bet. <b>FIGHT</b> (or the spacebar) places the bet and starts a round, then becomes <b>PLAY CARD</b>, which plays the next card in your hand. <b>»</b> is fast play: every card is played for you. <b>♪</b> turns sound on or off. <b>i</b> opens this page.</p>
+    <p class="fine">This is a proof of concept with demo credits. No real money is involved and credits have no value. Rounds are generated in your browser. The expected return is calculated over many plays. Malfunction voids all wins and plays.</p>
+    <button class="close" id="bClose">Close</button>`;
+  $('modal').classList.add('open');
+  $('bClose').onclick = () => $('modal').classList.remove('open');
+}
+
+$('go').onclick = mainAction;
+$('hand').onclick = e => playCard(e.target.closest('.hcard'));
+$('bMinus').onclick = () => { if (S.phase === 'idle' && S.betIdx > 0) { S.betIdx--; RGS.setBet(S.bets[S.betIdx]); renderHud(); } };
+$('bPlus').onclick = () => { if (S.phase === 'idle' && S.betIdx < S.bets.length - 1) { S.betIdx++; RGS.setBet(S.bets[S.betIdx]); renderHud(); } };
+$('bSound').onclick = () => { S.sound = !S.sound; renderHud(); if (S.sound) SFX.draw(); };
+$('bTurbo').onclick = () => { S.turbo = !S.turbo; renderHud(); auto(); };
+$('bInfo').onclick = openInfo;
+$('modal').onclick = e => { if (e.target.id === 'modal') $('modal').classList.remove('open'); };
+document.addEventListener('keydown', e => {
+  if (e.code !== 'Space' || $('modal').classList.contains('open')) return;
+  e.preventDefault();
+  // Otherwise the spacebar would also click whichever button was tapped last.
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  mainAction();
+});
+addEventListener('resize', fan);
+
+RGS.authenticate().then(a => {
+  S.bets = a.config.betLevels;
+  S.betIdx = Math.max(0, S.bets.indexOf(a.lastBet));
+  if (!S.bets.includes(a.lastBet)) S.betIdx = S.bets.indexOf(a.config.defaultBet);
+  setBalance(a.balance); renderLadder(); renderPlayed(); renderHud();
+});
+</script>
+</body>
+</html>
