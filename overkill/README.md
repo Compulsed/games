@@ -13,6 +13,9 @@ and after the sixth card the champion strikes. The payout depends on total damag
   It stands in for the RGS: the page only animates the round it is given.
 - `index.html`: the game. No build step, no external requests. Balance is demo credits kept in `localStorage`.
 - `sim.js`: `node sim.js 60000000` prints tier odds, RTP and hit rate.
+- `art/*.webp`: champions, bosses, card pictures, the card back and the arena, all loaded from this folder.
+  `art/gen.js` generates the originals through OpenRouter into `art/raw/` (not committed, about $0.07 an image),
+  and `art/convert.js` cuts the figures out of their magenta background and writes the WebP files.
 
 ## Maths (60M simulated rounds)
 
@@ -22,4 +25,3 @@ Change anything in `engine.js`, then rerun `sim.js` and update `RTP` there.
 ## Not done yet
 
 The real RGS calls (`authenticate`, `play`, `end-round`), replay mode, social-mode wording, currencies and translations.
-The art is emoji.
