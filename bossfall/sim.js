@@ -1,9 +1,8 @@
-// Monte Carlo over the engine block of index.html: tier odds and RTP per stance.
+// Monte Carlo over engine.js: tier odds and RTP per stance.
 const fs = require('fs');
 const path = require('path');
 
-const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
-const src = html.split('/*ENGINE-START*/')[1].split('/*ENGINE-END*/')[0];
+const src = fs.readFileSync(path.join(__dirname, 'engine.js'), 'utf8');
 const eng = new Function(src + '; return { playRound, STANCES, TIER_LABEL };')();
 
 const N = Number(process.argv[2] || 2000000);

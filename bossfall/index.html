@@ -39,27 +39,46 @@
   .mid .ok { font-size: 24px; font-weight: 800; margin-top: 4px; min-height: 30px; }
   .mid .ok.neg { color: var(--bad); } .mid .ok.pos { color: var(--good); }
 
-  .card { border-radius: 10px; border: 2px solid var(--line); background: linear-gradient(#32274f, #1d1630); display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; position: relative; overflow: hidden; text-align: center; }
-  .card.bossc { background: linear-gradient(#4a2530, #23131a); border-color: #7d3a44; }
-  .card.down { background: url(art/back.webp) center / cover, repeating-linear-gradient(45deg, #3d2e60 0 8px, #2c2148 8px 16px); }
+  /* A card is two faces on .inner, which turns over (rotateY). --up lifts it toward you, --sag droops it, --t is 0.4 in fast play. */
+  body { --t: 1; } body.turbo { --t: .4; }
+  .card { --ry: 0deg; --up: 0; --sag: 0; position: relative; border-radius: 10px; transform-style: preserve-3d; -webkit-transform-style: preserve-3d; }
+  .card.down { --ry: 180deg; }
+  .card::before { content: ''; position: absolute; inset: 8% 5% -5%; border-radius: 30%; background: radial-gradient(closest-side, rgba(0, 0, 0, .7), transparent); transform: translate3d(0, 3px, -1px) scale(calc(1 + var(--up) * .1)); opacity: calc(.6 + var(--up) * .4); transition: transform calc(.25s * var(--t)), opacity calc(.25s * var(--t)); }
+  .inner { position: absolute; inset: 0; border-radius: inherit; transform-style: preserve-3d; -webkit-transform-style: preserve-3d;
+    transform: translate3d(0, calc(var(--up) * -3px + var(--sag) * 4px), calc(var(--up) * 10px)) rotateZ(calc(var(--sag) * -4deg)) rotateY(var(--ry)) scale(calc(1 - var(--sag) * .06));
+    transition: transform calc(.4s * var(--t)) cubic-bezier(.3, .6, .3, 1) calc(var(--d, 0ms) * var(--t)); }
+  .face { position: absolute; inset: 0; border-radius: inherit; border: 2px solid var(--line); -webkit-backface-visibility: hidden; backface-visibility: hidden; }
+  .front { background: linear-gradient(#32274f, #1d1630); display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; overflow: hidden; text-align: center; }
+  .front::after { content: ''; position: absolute; inset: 0; background: rgba(24, 22, 30, .62); opacity: 0; transition: opacity calc(.4s * var(--t)); pointer-events: none; }
+  .back { transform: rotateY(180deg); background: url(art/back.webp) center / cover, repeating-linear-gradient(45deg, #3d2e60 0 8px, #2c2148 8px 16px); }
+  .back::after { content: ''; position: absolute; inset: -2px; border-radius: inherit; box-shadow: 0 0 14px rgba(232, 184, 74, .85); opacity: 0; }
+  .card.bossc .front { background: linear-gradient(#4a2530, #23131a); border-color: #7d3a44; }
   /* A card with artwork: the picture fills the card and the text sits on a dark fade at the bottom. */
-  .card.art { background-size: cover; background-position: center top; justify-content: flex-end; text-shadow: 0 1px 3px #000; }
+  .card.art .front { background-size: cover; background-position: center top; justify-content: flex-end; text-shadow: 0 1px 3px #000; }
   .card.art .ico { display: none; }
   .big.art .sub { color: var(--text); }
-  .mini.art { padding-bottom: 3px; }
-  .card.down > * { visibility: hidden; }
-  .card.tap { border-color: var(--gold); animation: glow 1.1s infinite; cursor: pointer; }
-  @keyframes glow { 0%, 100% { box-shadow: 0 0 4px rgba(232, 184, 74, .3); } 50% { box-shadow: 0 0 14px rgba(232, 184, 74, .85); } }
-  .card.flip { animation: flip .35s ease-out; }
-  @keyframes flip { 0% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
-  .big { width: min(34vw, 150px); aspect-ratio: 5 / 7; padding: 6px; }
+  .mini.art .front { padding-bottom: 3px; }
+  .card.tap { cursor: pointer; }
+  .card.tap .back { border-color: var(--gold); }
+  .card.tap .back::after { animation: glow 1.1s infinite; }
+  .card.tap:active { --up: 1; }
+  @media (hover: hover) { .card.tap:hover { --up: 1; } }
+  @keyframes glow { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+  .fighter { perspective: 700px; }
+  .big { width: min(34vw, 150px); aspect-ratio: 5 / 7; transform-origin: 50% 100%; transition: transform calc(.4s * var(--t)) ease-out, opacity calc(.4s * var(--t)); }
+  .big .front { padding: 6px; }
   .big .ico { font-size: min(15vw, 64px); line-height: 1; }
   .big .nm { font-family: Georgia, serif; font-size: 15px; font-weight: 700; }
   .big .sub { font-size: 11px; color: var(--mute); }
   .big .sub b { color: var(--mana); }
-  .big.dead { filter: grayscale(1) brightness(.6); transform: rotate(8deg); transition: all .4s; }
-  .big.hit { animation: hit .3s; }
-  @keyframes hit { 30% { transform: translateX(6px); } 60% { transform: translateX(-5px); } }
+  /* Boss beaten: it falls back, away from you. Boss survives: it leans in and the champion is knocked back. */
+  .big.dead { transform: rotateX(84deg); opacity: .3; transition: transform calc(.7s * var(--t)) cubic-bezier(.55, 0, .8, .4), opacity calc(.7s * var(--t)) ease-in; }
+  .big.dead::before { transform: translate3d(0, 3px, -1px) scale(.5); opacity: 0; transition-duration: calc(.6s * var(--t)); }
+  .big.lean { transform: translate3d(0, -2px, 12px) rotateX(-7deg); transition: transform calc(.5s * var(--t)) cubic-bezier(.3, 1.4, .5, 1); }
+  .big.beaten { transform: translate3d(0, 4px, -40px) rotateX(24deg) rotateZ(-7deg); transition: transform calc(.5s * var(--t)) cubic-bezier(.2, 1.3, .5, 1); }
+  .big.beaten .front::after { opacity: 1; }
+  .big.hit { animation: hit calc(.42s * var(--t)) ease-out; }
+  @keyframes hit { 25% { transform: translate3d(calc(var(--k) * 4px), 0, calc(var(--k) * -28px)) rotateX(calc(var(--k) * 15deg)) rotateZ(calc(var(--k) * 5deg)); } 60% { transform: rotateX(calc(var(--k) * -3deg)) rotateZ(calc(var(--k) * -1.5deg)); } }
   .bump { animation: bump .3s; }
   @keyframes bump { 40% { transform: scale(1.25); color: var(--gold); } }
 
@@ -78,17 +97,32 @@
   .log.lose { color: var(--mute); }
   @keyframes pulse { 50% { transform: scale(1.05); } }
 
-  .line { display: flex; gap: 6px; justify-content: center; }
-  .mini { flex: 1 1 0; min-width: 0; max-width: 68px; aspect-ratio: 5 / 7; padding: 2px; border-radius: 8px; }
+  /* The six lie on a table: the row tilts back. */
+  .line { display: flex; gap: 6px; justify-content: center; transform: perspective(520px) rotateX(15deg); transform-style: preserve-3d; -webkit-transform-style: preserve-3d; }
+  .mini { flex: 1 1 0; min-width: 0; max-width: 68px; aspect-ratio: 5 / 7; border-radius: 8px; }
+  .mini .front { padding: 2px; }
   .mini .ico { font-size: 20px; line-height: 1; }
   .mini .eff { font-size: 14px; font-weight: 800; white-space: nowrap; }
   .mini .cost { font-size: 10px; font-weight: 700; color: var(--mana); white-space: nowrap; min-height: 12px; }
-  .mini.phys:not(.down) { border-color: var(--steel); }
-  .mini.spell:not(.down) { border-color: var(--mana); background-image: linear-gradient(#22345a, #151b33); }
-  .mini.mult:not(.down) { border-color: var(--gold); background-image: linear-gradient(#4a3a1c, #231a10); }
-  .mini.now { box-shadow: 0 0 12px rgba(255, 255, 255, .6); }
-  .mini.void { opacity: .45; }
+  .mini.phys .front { border-color: var(--steel); }
+  .mini.spell .front { border-color: var(--mana); background-image: linear-gradient(#22345a, #151b33); }
+  .mini.mult .front { border-color: var(--gold); background-image: linear-gradient(#4a3a1c, #231a10); }
+  .mini.now { --up: .7; }
+  .mini.now .front { box-shadow: 0 0 12px rgba(255, 255, 255, .6); }
+  .mini.void { --up: 0; --sag: 1; }
+  .mini.void .front::after { opacity: 1; }
   .mini.void .eff { text-decoration: line-through; }
+
+  /* Reduced motion: faces cross-fade in place, no recoil, fall or lean. */
+  @media (prefers-reduced-motion: reduce) {
+    .inner { transform: none; transition: none; }
+    .face { -webkit-backface-visibility: visible; backface-visibility: visible; transition: opacity calc(.25s * var(--t)); }
+    .back { transform: none; }
+    .card:not(.down) .back, .card.down .front { opacity: 0; }
+    .big.dead, .big.lean, .big.beaten { transform: none; opacity: 1; }
+    .big.hit { animation: none; }
+    .big.dead .front::after { opacity: 1; }
+  }
 
   .hud { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .pill { background: var(--panel); border: 1.5px solid var(--line); border-radius: 10px; padding: 4px 10px; }
@@ -171,76 +205,9 @@
 
 <div id="modal"><div class="sheet" id="sheet"></div></div>
 
+<script src="engine.js"></script>
 <script>
-/*ENGINE-START*/
-// A round: one random champion (attack + mana), one boss, six cards from the deck in flip order.
-const CHAMPS = [
-  { name: 'Berserker',  icon: '🪓', atk: 15, mana: 0,  w: 3 },
-  { name: 'Knight',     icon: '⚔️', atk: 12, mana: 2,  w: 3 },
-  { name: 'Paladin',    icon: '🛡️', atk: 10, mana: 4,  w: 3 },
-  { name: 'Ranger',     icon: '🏹', atk: 8,  mana: 5,  w: 3 },
-  { name: 'Battlemage', icon: '🧙', atk: 6,  mana: 8,  w: 3 },
-  { name: 'Archmage',   icon: '✨', atk: 3,  mana: 12, w: 3 },
-  { name: 'Dragon',     icon: '🐉', atk: 14, mana: 8,  w: 1 },
-];
-const CARDS = [
-  { name: 'Dagger',        icon: '🗡️', t: 'phys',  v: 3,   n: 5 },
-  { name: 'Sword',         icon: '⚔️', t: 'phys',  v: 5,   n: 5 },
-  { name: 'Axe',           icon: '🪓', t: 'phys',  v: 7,   n: 4 },
-  { name: 'Lance',         icon: '🔱', t: 'phys',  v: 9,   n: 2 },
-  { name: 'Warhammer',     icon: '🔨', t: 'phys',  v: 12,  n: 1 },
-  { name: 'Spark',         icon: '⚡', t: 'spell', v: 6,   cost: 1, n: 4 },
-  { name: 'Firebolt',      icon: '🔥', t: 'spell', v: 10,  cost: 2, n: 4 },
-  { name: 'Lightning',     icon: '🌩️', t: 'spell', v: 15,  cost: 3, n: 3 },
-  { name: 'Meteor',        icon: '☄️', t: 'spell', v: 24,  cost: 5, n: 2 },
-  { name: 'Cataclysm',     icon: '🌋', t: 'spell', v: 40,  cost: 8, n: 1 },
-  { name: 'Battle cry',    icon: '📯', t: 'mult',  v: 1.5, n: 4 },
-  { name: 'Twin strike',   icon: '🤺', t: 'mult',  v: 2,   n: 3 },
-  { name: "Dragon's fury", icon: '🐲', t: 'mult',  v: 3,   n: 1 },
-];
-const BOSSES = [
-  { name: 'Bandit Lord', icon: '🦹', hp: 60 },
-  { name: 'Lich King',   icon: '☠️', hp: 70 },
-  { name: 'Stone Titan', icon: '🗿', hp: 80 },
-  { name: 'Kraken',      icon: '🐙', hp: 95 },
-];
-// Tier by overkill (damage minus boss HP). Tier 0: the boss survives and nothing is paid.
-const TIER_MIN = [0, 10, 25, 50, 100, 200, 400];
-const TIER_LABEL = ['Boss survives', 'Beaten, 0–9 over', '10–24 over', '25–49 over', '50–99 over', '100–199 over', '200–399 over', '400+ over'];
-// rtp is measured by sim.js; update it when cards, bosses or pays change.
-const STANCES = {
-  skirmish: { name: 'Skirmish',    tag: 'steady',   pay: [0, 1, 2, 2.5, 4, 7, 18, 50],  rtp: 96.2 },
-  warband:  { name: 'Warband',     tag: 'balanced', pay: [0, 1, 1, 2, 3, 9, 38, 200],   rtp: 96.0 },
-  dragon:   { name: 'Dragon hunt', tag: 'wild',     pay: [0, 1, 1, 1, 2, 7, 30, 1000],  rtp: 96.3 },
-};
-function tierOf(o) { let t = 0; for (let i = 0; i < TIER_MIN.length; i++) if (o >= TIER_MIN[i]) t = i + 1; return t; }
-function effText(c) { return c.t === 'mult' ? '×' + c.v : '+' + c.v; }
-function pickWeighted(list, rng) {
-  let r = rng() * list.reduce((a, x) => a + x.w, 0);
-  for (const x of list) { r -= x.w; if (r < 0) return x; }
-  return list[list.length - 1];
-}
-function playRound(rng = Math.random) {
-  const champ = pickWeighted(CHAMPS, rng);
-  const boss = BOSSES[Math.floor(rng() * BOSSES.length)];
-  const deck = [];
-  CARDS.forEach(c => { for (let i = 0; i < c.n; i++) deck.push(c); });
-  let dmg = champ.atk, mana = champ.mana;
-  const events = [];
-  for (let i = 0; i < 6; i++) {
-    const c = deck.splice(Math.floor(rng() * deck.length), 1)[0];
-    let text, fx = c.t, voided = false;
-    if (c.t === 'phys') { dmg += c.v; text = `${c.name} strikes: +${c.v} damage`; }
-    else if (c.t === 'mult') { dmg = Math.floor(dmg * c.v); text = `${c.name}: all damage so far ×${c.v}!`; }
-    else if (mana >= c.cost) { mana -= c.cost; dmg += c.v; text = `${c.name} costs ${c.cost} mana: +${c.v} damage`; }
-    else { voided = true; fx = 'void'; text = `${c.name} needs ${c.cost} mana, you have ${mana}. It fizzles!`; }
-    events.push({ card: c, fx, voided, dmg, mana, text });
-  }
-  const overkill = dmg - boss.hp;
-  return { champ, boss, events, dmg, overkill, tier: tierOf(overkill) };
-}
-/*ENGINE-END*/
-
+// The rules and maths (CHAMPS, CARDS, BOSSES, STANCES, playRound, ...) are in engine.js.
 const $ = id => document.getElementById(id);
 const BETS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100];
 const START = 1000;
@@ -278,19 +245,22 @@ const SFX = {
 
 // Artwork is art/<name>.webp. A picture is used once it has loaded; until then, or if it is missing, the emoji shows.
 const ART = {};
-const slug = n => n.toLowerCase().replace(/'/g, '').replace(/ /g, '-');
 [...CHAMPS, ...BOSSES, ...CARDS].forEach(c => { const i = new Image(); i.onload = () => { ART[c.name] = i.src; }; i.src = `art/${slug(c.name)}.webp`; });
 function setArt(el, c, fade) {
   const url = ART[c.name];
   el.classList.toggle('art', !!url);
-  el.style.backgroundImage = url ? `linear-gradient(transparent ${fade}%, rgba(12, 8, 20, .95) 92%), url("${url}")` : '';
+  front(el).style.backgroundImage = url ? `linear-gradient(transparent ${fade}%, rgba(12, 8, 20, .95) 92%), url("${url}")` : '';
 }
 
+// Every card is two faces; the front is filled while the card is still face-down, then it turns over.
+const FACES = '<div class="inner"><div class="face front"></div><div class="face back"></div></div>';
+const FLIP = 400;
+const front = el => el.querySelector('.front');
 function bigCard(el, c, sub) {
   setArt(el, c, 55);
-  el.innerHTML = `<div class="ico">${c.icon}</div><div><div class="nm">${c.name}</div><div class="sub">${sub}</div></div>`;
+  front(el).innerHTML = `<div class="ico">${c.icon}</div><div><div class="nm">${c.name}</div><div class="sub">${sub}</div></div>`;
 }
-function reveal(el) { el.classList.remove('down', 'tap'); el.classList.add('flip'); setTimeout(() => el.classList.remove('flip'), 400); }
+function reveal(el) { el.style.removeProperty('--d'); el.classList.remove('down', 'tap'); }
 function bump(el) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
 function setNum(el, v) { if (el.textContent !== String(v)) { el.textContent = v; bump(el); } }
 function log(text, cls = '') { const l = $('log'); l.className = 'log ' + cls; l.textContent = text; }
@@ -314,7 +284,7 @@ function setOverkill(o) {
   $('fill').style.width = (meterPos(o) * 100).toFixed(1) + '%';
 }
 
-function renderLine() { $('line').innerHTML = '<div class="card mini down"></div>'.repeat(6); }
+function renderLine() { $('line').innerHTML = `<div class="card mini down">${FACES}</div>`.repeat(6); }
 function renderStances() {
   const busy = S.phase !== 'idle';
   $('stances').innerHTML = Object.entries(STANCES).map(([k, st]) =>
@@ -329,15 +299,18 @@ function renderHud() {
   $('play').textContent = busy ? 'FLIP' : S.balance < BETS[0] ? 'REFILL' : 'PLAY';
   $('bSound').classList.toggle('on', S.sound);
   $('bTurbo').classList.toggle('on', S.turbo);
+  document.body.classList.toggle('turbo', S.turbo);
 }
 function countUp(el, to) {
   const t0 = performance.now(), d = S.turbo ? 300 : 900;
   (function f(t) { const k = Math.min(1, (t - t0) / d); el.textContent = fmt(to * k); if (k < 1) requestAnimationFrame(f); })(t0);
 }
+// Everything turns face-down again (the row of six one after another); old fronts are overwritten before the next reveal.
 function resetBoard() {
-  for (const id of ['champ', 'boss']) { const e = $(id); e.classList.add('down'); e.classList.remove('dead', 'hit', 'tap', 'art'); e.style.backgroundImage = ''; e.innerHTML = ''; }
+  for (const id of ['champ', 'boss']) { $(id).classList.remove('dead', 'lean', 'beaten', 'hit', 'tap'); $(id).classList.add('down'); }
+  $('line').querySelectorAll('.mini').forEach((x, i) => { x.classList.remove('now', 'void', 'tap'); x.style.setProperty('--d', i * 45 + 'ms'); x.classList.add('down'); });
   $('dmg').textContent = '–'; $('mana').textContent = '–'; $('hp').textContent = '–';
-  setOverkill(null); renderMeter(); renderLine();
+  setOverkill(null); renderMeter();
 }
 // Fast play flips everything for the player.
 function auto() { if (S.turbo && S.phase !== 'idle') setTimeout(next, 120); }
@@ -348,7 +321,9 @@ async function start() {
   bet = BETS[S.betIdx];
   S.balance -= bet; S.phase = 'champ'; lock = true; flips = 0; queued = null;
   renderHud(); renderStances(); $('win').textContent = fmt(0);
+  const shown = !$('boss').classList.contains('down');
   resetBoard();
+  if (shown) await wait(FLIP);
   R = playRound();
   bigCard($('boss'), R.boss, 'Boss'); reveal($('boss')); SFX.boss();
   setNum($('hp'), R.boss.hp);
@@ -367,7 +342,7 @@ async function flipChamp() {
   log(`${c.name}: ${c.atk} attack, ${c.mana} mana. Now flip the six cards in any order.`);
   await wait(600);
   S.phase = 'cards';
-  $('line').querySelectorAll('.mini').forEach(x => x.classList.add('tap'));
+  $('line').querySelectorAll('.mini').forEach(x => { x.style.removeProperty('--d'); x.classList.add('tap'); });
   lock = false; auto();
 }
 
@@ -378,15 +353,18 @@ async function flipCard(el) {
   lock = true;
   // The deck is shuffled, so the n-th card flipped is the n-th card dealt, whichever one is tapped.
   const ev = R.events[flips++], c = ev.card;
-  el.innerHTML = `<div class="ico">${c.icon}</div><div class="eff">${effText(c)}</div><div class="cost">${c.t === 'spell' ? c.cost + ' mana' : ''}</div>`;
   $('line').querySelectorAll('.mini').forEach(x => x.classList.remove('now'));
+  el.className = 'card mini down tap';
+  front(el).innerHTML = `<div class="ico">${c.icon}</div><div class="eff">${effText(c)}</div><div class="cost">${c.t === 'spell' ? c.cost + ' mana' : ''}</div>`;
   setArt(el, c, 40);
-  el.classList.add(c.t, 'now'); if (ev.voided) el.classList.add('void');
+  el.classList.add(c.t, 'now');
   reveal(el); SFX.flip();
   await wait(220);
   log(ev.text); SFX[ev.fx]();
   setNum($('dmg'), ev.dmg); setNum($('mana'), ev.mana); setOverkill(ev.dmg - R.boss.hp);
-  if (!ev.voided) { const b = $('boss'); b.classList.remove('hit'); void b.offsetWidth; b.classList.add('hit'); }
+  // A hit knocks the boss back, harder for spells and multipliers; a fizzled spell droops instead.
+  if (ev.voided) el.classList.add('void');
+  else { const b = $('boss'); b.style.setProperty('--k', { phys: .5, spell: 1, mult: 1.6 }[c.t]); b.classList.remove('hit'); void b.offsetWidth; b.classList.add('hit'); }
   await wait(ev.fx === 'mult' ? 800 : 500);
   if (flips === 6) return finish();
   lock = false;
@@ -398,6 +376,7 @@ async function finish() {
   $('line').querySelectorAll('.mini').forEach(x => x.classList.remove('now'));
   const pay = STANCES[S.stance].pay[R.tier], win = Math.round(pay * bet * 100) / 100;
   renderMeter(R.tier);
+  $('boss').classList.remove('hit');
   if (win > 0) {
     $('boss').classList.add('dead');
     const big = pay >= 5, even = win <= bet;
@@ -405,6 +384,7 @@ async function finish() {
     (big ? SFX.big : even ? SFX.back : SFX.win)();
     S.balance += win; countUp($('win'), win);
   } else {
+    $('boss').classList.add('lean'); $('champ').classList.add('beaten');
     log(`${R.boss.name} survives with ${-R.overkill} HP left.`, 'lose');
     SFX.lose();
   }
@@ -475,6 +455,9 @@ document.addEventListener('keydown', e => {
   next();
 });
 
+// iOS Safari only applies :active (the press lift) when the page listens for touches.
+document.addEventListener('touchstart', () => {}, { passive: true });
+$('champ').innerHTML = $('boss').innerHTML = FACES;
 renderStances(); renderMeter(); renderLine(); renderHud();
 </script>
 </body>

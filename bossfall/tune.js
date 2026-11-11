@@ -1,10 +1,9 @@
-// Tuning aid: tier odds for candidate boss HP sets, without editing index.html.
+// Tuning aid: tier odds for candidate boss HP sets, without editing engine.js.
 // usage: node tune.js 60,70,80,95 [rounds]
 const fs = require('fs');
 const path = require('path');
 
-const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
-const src = html.split('/*ENGINE-START*/')[1].split('/*ENGINE-END*/')[0];
+const src = fs.readFileSync(path.join(__dirname, 'engine.js'), 'utf8');
 const eng = new Function(src + '; return { playRound, tierOf, TIER_LABEL };')();
 
 const hps = (process.argv[2] || '40,48,56,66').split(',').map(Number);
