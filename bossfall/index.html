@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bossfall</title>
+<style>
+  :root {
+    --bg: #130f1c; --panel: #1f1830; --panel2: #2b2143; --line: #47396a;
+    --gold: #e8b84a; --text: #f0e7d6; --mute: #a698bd; --good: #6fd38a; --bad: #e66a60; --mana: #6ab4ff; --steel: #b9b3c4;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { background: radial-gradient(ellipse at 50% 0%, #33255a 0%, var(--bg) 60%) fixed; }
+  button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; touch-action: manipulation; }
+  button:disabled { opacity: .45; cursor: default; }
+  #app { max-width: 480px; margin: 0 auto; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; gap: 8px; padding: 8px 10px calc(10px + env(safe-area-inset-bottom)); user-select: none; -webkit-user-select: none; }
+
+  header { display: flex; align-items: center; gap: 8px; }
+  h1 { font-family: Georgia, "Times New Roman", serif; font-size: 22px; letter-spacing: 1px; margin: 0; color: var(--gold); flex: 1; }
+  .round { width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--line); background: var(--panel); font-weight: 700; font-size: 15px; }
+  .round.on { border-color: var(--gold); color: var(--gold); }
+
+  .stances { display: flex; gap: 6px; }
+  .stances button { flex: 1; padding: 7px 4px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--panel); font-size: 13px; line-height: 1.2; }
+  .stances button small { display: block; font-size: min(10px, 2.5vw); white-space: nowrap; color: var(--mute); }
+  .stances button.on { border-color: var(--gold); background: var(--panel2); color: var(--gold); }
+
+  .arena { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; gap: 8px; }
+  .duel { display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .fighter { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+  .cap { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--mute); }
+  .stats { display: flex; gap: 5px; }
+  .stat { font-weight: 800; font-size: 19px; padding: 2px 10px; border-radius: 12px; background: var(--panel); border: 1.5px solid var(--line); min-width: 58px; text-align: center; line-height: 1.1; }
+  .stat small { display: block; font-size: 9px; font-weight: 600; color: var(--mute); letter-spacing: 1px; }
+  .stat.mana { color: var(--mana); }
+  .mid { width: 66px; text-align: center; }
+  .mid .vs { font-family: Georgia, serif; color: var(--mute); font-size: 18px; }
+  .mid .ok { font-size: 24px; font-weight: 800; margin-top: 4px; min-height: 30px; }
+  .mid .ok.neg { color: var(--bad); } .mid .ok.pos { color: var(--good); }
+
+  .card { border-radius: 10px; border: 2px solid var(--line); background: linear-gradient(#32274f, #1d1630); display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; position: relative; overflow: hidden; text-align: center; }
+  .card.bossc { background: linear-gradient(#4a2530, #23131a); border-color: #7d3a44; }
+  .card.down { background: repeating-linear-gradient(45deg, #3d2e60 0 8px, #2c2148 8px 16px); }
+  .card.down > * { visibility: hidden; }
+  .card.tap { border-color: var(--gold); animation: glow 1.1s infinite; cursor: pointer; }
+  @keyframes glow { 0%, 100% { box-shadow: 0 0 4px rgba(232, 184, 74, .3); } 50% { box-shadow: 0 0 14px rgba(232, 184, 74, .85); } }
+  .card.flip { animation: flip .35s ease-out; }
+  @keyframes flip { 0% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+  .big { width: min(34vw, 150px); aspect-ratio: 5 / 7; padding: 6px; }
+  .big .ico { font-size: min(15vw, 64px); line-height: 1; }
+  .big .nm { font-family: Georgia, serif; font-size: 15px; font-weight: 700; }
+  .big .sub { font-size: 11px; color: var(--mute); }
+  .big .sub b { color: var(--mana); }
+  .big.dead { filter: grayscale(1) brightness(.6); transform: rotate(8deg); transition: all .4s; }
+  .big.hit { animation: hit .3s; }
+  @keyframes hit { 30% { transform: translateX(6px); } 60% { transform: translateX(-5px); } }
+  .bump { animation: bump .3s; }
+  @keyframes bump { 40% { transform: scale(1.25); color: var(--gold); } }
+
+  .meter { position: relative; height: 30px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--panel); overflow: hidden; }
+  .meter .fill { position: absolute; inset: 0 auto 0 0; width: 0; background: linear-gradient(90deg, #6b3a1e, var(--gold)); opacity: .55; transition: width .4s ease-out; }
+  .meter .segs { position: absolute; inset: 0; display: flex; }
+  .meter .seg { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; border-left: 1px solid var(--line); }
+  .meter .seg:first-child { border-left: 0; color: var(--bad); }
+  .meter .seg.kill { border-left: 3px solid var(--gold); }
+  .meter .seg.lit { background: rgba(232, 184, 74, .35); color: #fff; }
+  .mcap { display: flex; justify-content: space-between; font-size: 10px; color: var(--mute); margin-top: 3px; }
+
+  .log { min-height: 40px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 14px; padding: 4px 10px; border-radius: 10px; background: rgba(0, 0, 0, .25); }
+  .log.win { background: rgba(111, 211, 138, .16); color: var(--good); font-weight: 700; font-size: 16px; }
+  .log.bigwin { background: rgba(232, 184, 74, .2); color: var(--gold); font-weight: 800; font-size: 18px; animation: pulse .6s 3; }
+  .log.lose { color: var(--mute); }
+  @keyframes pulse { 50% { transform: scale(1.05); } }
+
+  .line { display: flex; gap: 6px; justify-content: center; }
+  .mini { flex: 1 1 0; min-width: 0; max-width: 68px; aspect-ratio: 5 / 7; padding: 2px; border-radius: 8px; }
+  .mini .ico { font-size: 20px; line-height: 1; }
+  .mini .eff { font-size: 14px; font-weight: 800; white-space: nowrap; }
+  .mini .cost { font-size: 10px; font-weight: 700; color: var(--mana); white-space: nowrap; min-height: 12px; }
+  .mini.phys:not(.down) { border-color: var(--steel); }
+  .mini.spell:not(.down) { border-color: var(--mana); background: linear-gradient(#22345a, #151b33); }
+  .mini.mult:not(.down) { border-color: var(--gold); background: linear-gradient(#4a3a1c, #231a10); }
+  .mini.now { box-shadow: 0 0 12px rgba(255, 255, 255, .6); }
+  .mini.void { opacity: .45; }
+  .mini.void .eff { text-decoration: line-through; }
+
+  .hud { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .pill { background: var(--panel); border: 1.5px solid var(--line); border-radius: 10px; padding: 4px 10px; }
+  .pill .k { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--mute); }
+  .pill .v { font-size: 17px; font-weight: 800; }
+  .pill.win .v { color: var(--gold); }
+  .betrow { grid-column: 1 / 3; display: flex; gap: 6px; align-items: stretch; }
+  .sq { width: 44px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--panel); font-size: 22px; font-weight: 700; }
+  .betrow .pill { width: 96px; text-align: center; }
+  #play { flex: 1; min-height: 54px; border-radius: 27px; background: linear-gradient(#f3cb68, #c98f1e); color: #2a1a00; font-weight: 800; font-size: 19px; letter-spacing: 1px; box-shadow: 0 3px 0 #7d560c; }
+  #play:active { transform: translateY(2px); box-shadow: 0 1px 0 #7d560c; }
+
+  #modal { position: fixed; inset: 0; background: rgba(8, 5, 14, .8); display: none; align-items: flex-end; justify-content: center; z-index: 10; }
+  #modal.open { display: flex; }
+  .sheet { width: 100%; max-width: 480px; max-height: 88vh; overflow-y: auto; background: var(--panel); border: 1.5px solid var(--line); border-radius: 16px 16px 0 0; padding: 14px 16px 24px; font-size: 14px; line-height: 1.45; user-select: text; -webkit-user-select: text; }
+  .sheet h2 { font-family: Georgia, serif; color: var(--gold); margin: 0 0 6px; font-size: 20px; }
+  .sheet h3 { font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--mute); margin: 16px 0 6px; }
+  .sheet p { margin: 6px 0; }
+  .sheet table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .sheet td, .sheet th { padding: 4px 6px; border-bottom: 1px solid var(--line); text-align: left; }
+  .sheet th { font-size: 11px; color: var(--mute); font-weight: 600; }
+  .sheet td.r, .sheet th.r { text-align: right; }
+  .sheet .close { width: 100%; margin-top: 16px; padding: 12px; border-radius: 12px; background: var(--panel2); border: 1.5px solid var(--line); font-weight: 700; }
+  .sheet .fine { font-size: 12px; color: var(--mute); }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>Bossfall</h1>
+    <button class="round" id="bSound" aria-label="Sound on or off" title="Sound">♪</button>
+    <button class="round" id="bTurbo" aria-label="Fast play on or off" title="Fast play: flips every card for you">»</button>
+    <button class="round" id="bInfo" aria-label="Rules and payouts" title="Rules">i</button>
+  </header>
+
+  <div class="stances" id="stances"></div>
+
+  <div class="arena">
+    <div class="duel">
+      <div class="fighter">
+        <div class="cap">Your champion</div>
+        <div class="card big down" id="champ"></div>
+        <div class="stats">
+          <div class="stat"><span id="dmg">–</span><small>DMG</small></div>
+          <div class="stat mana"><span id="mana">–</span><small>MANA</small></div>
+        </div>
+      </div>
+      <div class="mid">
+        <div class="vs">VS</div>
+        <div class="ok" id="ok"></div>
+      </div>
+      <div class="fighter">
+        <div class="cap">The boss</div>
+        <div class="card big bossc down" id="boss"></div>
+        <div class="stats"><div class="stat"><span id="hp">–</span><small>HP</small></div></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="meter"><div class="fill" id="fill"></div><div class="segs" id="segs"></div></div>
+      <div class="mcap"><span>boss survives</span><span>overkill pays more →</span></div>
+    </div>
+
+    <div class="log" id="log">Flip your champion, then flip six cards in any order. Out-damage the boss to win.</div>
+
+    <div class="line" id="line"></div>
+  </div>
+
+  <div class="hud">
+    <div class="pill"><div class="k">Coins</div><div class="v" id="bal"></div></div>
+    <div class="pill win"><div class="k">Win</div><div class="v" id="win">0.00</div></div>
+    <div class="betrow">
+      <button class="sq" id="bMinus" aria-label="Lower play amount">−</button>
+      <div class="pill"><div class="k">Play amount</div><div class="v" id="bet"></div></div>
+      <button class="sq" id="bPlus" aria-label="Raise play amount">+</button>
+      <button id="play">PLAY</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal"><div class="sheet" id="sheet"></div></div>
+
+<script>
+/*ENGINE-START*/
+// A round: one random champion (attack + mana), one boss, six cards from the deck in flip order.
+const CHAMPS = [
+  { name: 'Berserker',  icon: '🪓', atk: 15, mana: 0,  w: 3 },
+  { name: 'Knight',     icon: '⚔️', atk: 12, mana: 2,  w: 3 },
+  { name: 'Paladin',    icon: '🛡️', atk: 10, mana: 4,  w: 3 },
+  { name: 'Ranger',     icon: '🏹', atk: 8,  mana: 5,  w: 3 },
+  { name: 'Battlemage', icon: '🧙', atk: 6,  mana: 8,  w: 3 },
+  { name: 'Archmage',   icon: '✨', atk: 3,  mana: 12, w: 3 },
+  { name: 'Dragon',     icon: '🐉', atk: 14, mana: 8,  w: 1 },
+];
+const CARDS = [
+  { name: 'Dagger',        icon: '🗡️', t: 'phys',  v: 3,   n: 5 },
+  { name: 'Sword',         icon: '⚔️', t: 'phys',  v: 5,   n: 5 },
+  { name: 'Axe',           icon: '🪓', t: 'phys',  v: 7,   n: 4 },
+  { name: 'Lance',         icon: '🔱', t: 'phys',  v: 9,   n: 2 },
+  { name: 'Warhammer',     icon: '🔨', t: 'phys',  v: 12,  n: 1 },
+  { name: 'Spark',         icon: '⚡', t: 'spell', v: 6,   cost: 1, n: 4 },
+  { name: 'Firebolt',      icon: '🔥', t: 'spell', v: 10,  cost: 2, n: 4 },
+  { name: 'Lightning',     icon: '🌩️', t: 'spell', v: 15,  cost: 3, n: 3 },
+  { name: 'Meteor',        icon: '☄️', t: 'spell', v: 24,  cost: 5, n: 2 },
+  { name: 'Cataclysm',     icon: '🌋', t: 'spell', v: 40,  cost: 8, n: 1 },
+  { name: 'Battle cry',    icon: '📯', t: 'mult',  v: 1.5, n: 4 },
+  { name: 'Twin strike',   icon: '🤺', t: 'mult',  v: 2,   n: 3 },
+  { name: "Dragon's fury", icon: '🐲', t: 'mult',  v: 3,   n: 1 },
+];
+const BOSSES = [
+  { name: 'Bandit Lord', icon: '🦹', hp: 60 },
+  { name: 'Lich King',   icon: '☠️', hp: 70 },
+  { name: 'Stone Titan', icon: '🗿', hp: 80 },
+  { name: 'Kraken',      icon: '🐙', hp: 95 },
+];
+// Tier by overkill (damage minus boss HP). Tier 0: the boss survives and nothing is paid.
+const TIER_MIN = [0, 10, 25, 50, 100, 200, 400];
+const TIER_LABEL = ['Boss survives', 'Beaten, 0–9 over', '10–24 over', '25–49 over', '50–99 over', '100–199 over', '200–399 over', '400+ over'];
+// rtp is measured by sim.js; update it when cards, bosses or pays change.
+const STANCES = {
+  skirmish: { name: 'Skirmish',    tag: 'steady',   pay: [0, 1, 2, 2.5, 4, 7, 18, 50],  rtp: 96.2 },
+  warband:  { name: 'Warband',     tag: 'balanced', pay: [0, 1, 1, 2, 3, 9, 38, 200],   rtp: 96.0 },
+  dragon:   { name: 'Dragon hunt', tag: 'wild',     pay: [0, 1, 1, 1, 2, 7, 30, 1000],  rtp: 96.3 },
+};
+function tierOf(o) { let t = 0; for (let i = 0; i < TIER_MIN.length; i++) if (o >= TIER_MIN[i]) t = i + 1; return t; }
+function effText(c) { return c.t === 'mult' ? '×' + c.v : '+' + c.v; }
+function pickWeighted(list, rng) {
+  let r = rng() * list.reduce((a, x) => a + x.w, 0);
+  for (const x of list) { r -= x.w; if (r < 0) return x; }
+  return list[list.length - 1];
+}
+function playRound(rng = Math.random) {
+  const champ = pickWeighted(CHAMPS, rng);
+  const boss = BOSSES[Math.floor(rng() * BOSSES.length)];
+  const deck = [];
+  CARDS.forEach(c => { for (let i = 0; i < c.n; i++) deck.push(c); });
+  let dmg = champ.atk, mana = champ.mana;
+  const events = [];
+  for (let i = 0; i < 6; i++) {
+    const c = deck.splice(Math.floor(rng() * deck.length), 1)[0];
+    let text, fx = c.t, voided = false;
+    if (c.t === 'phys') { dmg += c.v; text = `${c.name} strikes: +${c.v} damage`; }
+    else if (c.t === 'mult') { dmg = Math.floor(dmg * c.v); text = `${c.name}: all damage so far ×${c.v}!`; }
+    else if (mana >= c.cost) { mana -= c.cost; dmg += c.v; text = `${c.name} costs ${c.cost} mana: +${c.v} damage`; }
+    else { voided = true; fx = 'void'; text = `${c.name} needs ${c.cost} mana, you have ${mana}. It fizzles!`; }
+    events.push({ card: c, fx, voided, dmg, mana, text });
+  }
+  const overkill = dmg - boss.hp;
+  return { champ, boss, events, dmg, overkill, tier: tierOf(overkill) };
+}
+/*ENGINE-END*/
+
+const $ = id => document.getElementById(id);
+const BETS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100];
+const START = 1000;
+// phase: idle → champ (flip the champion) → cards (flip six) → idle
+const S = { balance: START, betIdx: 3, stance: 'warband', phase: 'idle', turbo: false, sound: true };
+let R = null, flips = 0, lock = false, bet = 0, queued = null;
+const fmt = n => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const wait = ms => new Promise(r => setTimeout(r, S.turbo ? ms * 0.4 : ms));
+const payText = p => (p ? p + 'x' : '✕');
+
+// Sound: small synth tones, no audio files.
+let actx = null;
+function tone(freq, dur = 0.12, type = 'triangle', when = 0, vol = 0.12) {
+  if (!S.sound) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime + when;
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + dur);
+  } catch (e) { /* no audio available */ }
+}
+const SFX = {
+  flip: () => tone(520, 0.06, 'square', 0, 0.05),
+  phys: () => { tone(220, 0.08, 'square', 0, 0.08); tone(440, 0.1, 'triangle', 0.05); },
+  spell: () => { tone(660, 0.12, 'sine'); tone(990, 0.2, 'sine', 0.08); },
+  mult: () => [440, 660, 880, 1320].forEach((f, i) => tone(f, 0.14, 'sawtooth', i * 0.07, 0.08)),
+  void: () => { tone(200, 0.2, 'square', 0, 0.06); tone(150, 0.25, 'square', 0.12, 0.06); },
+  boss: () => tone(140, 0.3, 'sawtooth', 0, 0.1),
+  back: () => tone(300, 0.08, 'sine', 0, 0.05),
+  win: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.2, 'triangle', i * 0.1)),
+  big: () => [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone(f, 0.3, 'triangle', i * 0.09, 0.15)),
+  lose: () => { tone(294, 0.2, 'sine'); tone(220, 0.35, 'sine', 0.15); },
+};
+
+function bigCard(el, c, sub) {
+  el.innerHTML = `<div class="ico">${c.icon}</div><div><div class="nm">${c.name}</div><div class="sub">${sub}</div></div>`;
+}
+function reveal(el) { el.classList.remove('down', 'tap'); el.classList.add('flip'); setTimeout(() => el.classList.remove('flip'), 400); }
+function bump(el) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+function setNum(el, v) { if (el.textContent !== String(v)) { el.textContent = v; bump(el); } }
+function log(text, cls = '') { const l = $('log'); l.className = 'log ' + cls; l.textContent = text; }
+
+// Meter: eight equal segments, one per payout tier.
+const BREAKS = [-60, 0, 10, 25, 50, 100, 200, 400, 800];
+function meterPos(o) {
+  const n = BREAKS.length - 1;
+  o = Math.max(BREAKS[0], Math.min(BREAKS[n], o));
+  for (let i = 0; i < n; i++) if (o <= BREAKS[i + 1]) return (i + (o - BREAKS[i]) / (BREAKS[i + 1] - BREAKS[i])) / n;
+  return 1;
+}
+function renderMeter(lit = -1) {
+  $('segs').innerHTML = STANCES[S.stance].pay.map((p, i) => `<div class="seg ${i === 1 ? 'kill' : ''} ${i === lit ? 'lit' : ''}">${payText(p)}</div>`).join('');
+}
+function setOverkill(o) {
+  const ok = $('ok');
+  if (o === null) { ok.textContent = ''; $('fill').style.width = '0'; return; }
+  ok.textContent = (o > 0 ? '+' : '') + o;
+  ok.className = 'ok ' + (o >= 0 ? 'pos' : 'neg');
+  $('fill').style.width = (meterPos(o) * 100).toFixed(1) + '%';
+}
+
+function renderLine() { $('line').innerHTML = '<div class="card mini down"></div>'.repeat(6); }
+function renderStances() {
+  const busy = S.phase !== 'idle';
+  $('stances').innerHTML = Object.entries(STANCES).map(([k, st]) =>
+    `<button data-k="${k}" class="${k === S.stance ? 'on' : ''}" ${busy ? 'disabled' : ''}>${st.name}<small>${st.tag} · max ${st.pay[st.pay.length - 1]}x</small></button>`).join('');
+}
+function renderHud() {
+  const busy = S.phase !== 'idle';
+  $('bal').textContent = fmt(S.balance);
+  $('bet').textContent = fmt(BETS[S.betIdx]);
+  $('bMinus').disabled = busy || S.betIdx === 0;
+  $('bPlus').disabled = busy || S.betIdx === BETS.length - 1;
+  $('play').textContent = busy ? 'FLIP' : S.balance < BETS[0] ? 'REFILL' : 'PLAY';
+  $('bSound').classList.toggle('on', S.sound);
+  $('bTurbo').classList.toggle('on', S.turbo);
+}
+function countUp(el, to) {
+  const t0 = performance.now(), d = S.turbo ? 300 : 900;
+  (function f(t) { const k = Math.min(1, (t - t0) / d); el.textContent = fmt(to * k); if (k < 1) requestAnimationFrame(f); })(t0);
+}
+function resetBoard() {
+  for (const id of ['champ', 'boss']) { const e = $(id); e.classList.add('down'); e.classList.remove('dead', 'hit', 'tap'); e.innerHTML = ''; }
+  $('dmg').textContent = '–'; $('mana').textContent = '–'; $('hp').textContent = '–';
+  setOverkill(null); renderMeter(); renderLine();
+}
+// Fast play flips everything for the player.
+function auto() { if (S.turbo && S.phase !== 'idle') setTimeout(next, 120); }
+
+async function start() {
+  if (S.balance < BETS[0]) { S.balance = START; renderHud(); log('Your coins are refilled. Good luck!'); return; }
+  while (S.betIdx > 0 && BETS[S.betIdx] > S.balance) S.betIdx--;
+  bet = BETS[S.betIdx];
+  S.balance -= bet; S.phase = 'champ'; lock = true; flips = 0; queued = null;
+  renderHud(); renderStances(); $('win').textContent = fmt(0);
+  resetBoard();
+  R = playRound();
+  bigCard($('boss'), R.boss, 'Boss'); reveal($('boss')); SFX.boss();
+  setNum($('hp'), R.boss.hp);
+  log(`${R.boss.name} appears with ${R.boss.hp} HP. Tap your champion to flip it.`);
+  await wait(500);
+  $('champ').classList.add('tap');
+  lock = false; auto();
+}
+
+async function flipChamp() {
+  if (S.phase !== 'champ' || lock) return;
+  lock = true;
+  const c = R.champ;
+  bigCard($('champ'), c, `${c.atk} ATK · <b>${c.mana} mana</b>`); reveal($('champ')); SFX.phys();
+  setNum($('dmg'), c.atk); setNum($('mana'), c.mana); setOverkill(c.atk - R.boss.hp);
+  log(`${c.name}: ${c.atk} attack, ${c.mana} mana. Now flip the six cards in any order.`);
+  await wait(600);
+  S.phase = 'cards';
+  $('line').querySelectorAll('.mini').forEach(x => x.classList.add('tap'));
+  lock = false; auto();
+}
+
+async function flipCard(el) {
+  if (S.phase !== 'cards' || !el || !el.classList.contains('down')) return;
+  // A tap during the previous card's animation is kept and played next.
+  if (lock) { queued = el; return; }
+  lock = true;
+  // The deck is shuffled, so the n-th card flipped is the n-th card dealt, whichever one is tapped.
+  const ev = R.events[flips++], c = ev.card;
+  el.innerHTML = `<div class="ico">${c.icon}</div><div class="eff">${effText(c)}</div><div class="cost">${c.t === 'spell' ? c.cost + ' mana' : ''}</div>`;
+  $('line').querySelectorAll('.mini').forEach(x => x.classList.remove('now'));
+  el.classList.add(c.t, 'now'); if (ev.voided) el.classList.add('void');
+  reveal(el); SFX.flip();
+  await wait(220);
+  log(ev.text); SFX[ev.fx]();
+  setNum($('dmg'), ev.dmg); setNum($('mana'), ev.mana); setOverkill(ev.dmg - R.boss.hp);
+  if (!ev.voided) { const b = $('boss'); b.classList.remove('hit'); void b.offsetWidth; b.classList.add('hit'); }
+  await wait(ev.fx === 'mult' ? 800 : 500);
+  if (flips === 6) return finish();
+  lock = false;
+  if (queued) { const q = queued; queued = null; return flipCard(q); }
+  auto();
+}
+
+async function finish() {
+  $('line').querySelectorAll('.mini').forEach(x => x.classList.remove('now'));
+  const pay = STANCES[S.stance].pay[R.tier], win = Math.round(pay * bet * 100) / 100;
+  renderMeter(R.tier);
+  if (win > 0) {
+    $('boss').classList.add('dead');
+    const big = pay >= 5, even = win <= bet;
+    log(`${R.boss.name} falls! Overkill +${R.overkill} · ${pay}x · you ${even ? 'get back' : 'win'} ${fmt(win)}`, big ? 'bigwin' : even ? '' : 'win');
+    (big ? SFX.big : even ? SFX.back : SFX.win)();
+    S.balance += win; countUp($('win'), win);
+  } else {
+    log(`${R.boss.name} survives with ${-R.overkill} HP left.`, 'lose');
+    SFX.lose();
+  }
+  await wait(win > 0 ? 700 : 300);
+  S.phase = 'idle'; lock = false; renderHud(); renderStances();
+}
+
+// The main button and the spacebar: start a round, or flip the next card.
+function next() {
+  if (lock) return;
+  if (S.phase === 'idle') start();
+  else if (S.phase === 'champ') flipChamp();
+  else flipCard($('line').querySelector('.mini.down'));
+}
+
+function openInfo() {
+  const champs = CHAMPS.map(c => `<tr><td>${c.icon} ${c.name}</td><td class="r">${c.atk}</td><td class="r">${c.mana}</td><td class="r">${c.w === 1 ? 'rare' : ''}</td></tr>`).join('');
+  const kind = { phys: 'Attack', spell: 'Spell', mult: 'Multiplier' };
+  const rows = CARDS.map(c => `<tr><td>${c.icon} ${c.name}</td><td>${kind[c.t]}</td><td class="r">${effText(c)}</td><td class="r">${c.cost || '–'}</td><td class="r">${c.n}</td></tr>`).join('');
+  const bossRows = BOSSES.map(b => `${b.icon} ${b.name} (${b.hp} HP)`).join(', ');
+  const st = Object.values(STANCES);
+  const pays = TIER_LABEL.map((l, i) => `<tr><td>${l}</td>${st.map(s => `<td class="r">${payText(s.pay[i])}</td>`).join('')}</tr>`).join('');
+  $('sheet').innerHTML = `
+    <h2>How Bossfall works</h2>
+    <p>Each round you get one random <b>champion</b>, one random boss, and <b>six face-down cards</b> from a ${CARDS.reduce((a, c) => a + c.n, 0)}-card deck.</p>
+    <p>Flip your champion first. Its attack is your starting damage and its mana pays for spells. Then flip the six cards in any order you like. Each card takes effect the moment it is flipped.</p>
+    <p>When all six are flipped, your damage must be at least the boss's HP. If the boss survives, you win nothing. If it falls, the amount you beat it by is your <b>overkill</b>, and more overkill pays more.</p>
+    <h3>Card types</h3>
+    <p><b>Attacks</b> add damage and cost nothing.<br><b>Spells</b> add more damage but cost mana. If you don't have enough mana left when a spell is flipped, it fizzles and does nothing.<br><b>Multipliers</b> multiply all the damage you have so far, so one that turns up late is worth more.</p>
+    <p class="fine">The cards are shuffled and face down, so every card you tap is equally likely to be any of the cards left.</p>
+    <h3>Payouts (× play amount)</h3>
+    <table><tr><th>Result</th>${st.map(s => `<th class="r">${s.name}</th>`).join('')}</tr>${pays}
+    <tr><td>Return to player</td>${st.map(s => `<td class="r">${s.rtp}%</td>`).join('')}</tr></table>
+    <p class="fine">The stance only changes the payouts, not the cards. Pick it before you play.</p>
+    <h3>Champions</h3>
+    <table><tr><th>Champion</th><th class="r">Attack</th><th class="r">Mana</th><th></th></tr>${champs}</table>
+    <h3>Bosses</h3>
+    <p>${bossRows}. Each is equally likely.</p>
+    <h3>Cards</h3>
+    <table><tr><th>Card</th><th>Type</th><th class="r">Effect</th><th class="r">Mana</th><th class="r">In deck</th></tr>${rows}</table>
+    <h3>Buttons</h3>
+    <p><b>−</b> / <b>+</b> change the play amount. <b>PLAY</b> (or the spacebar) starts a round, then becomes <b>FLIP</b>, which flips the next card for you. <b>»</b> is fast play: it flips every card automatically. <b>♪</b> turns sound on or off. <b>i</b> opens this page.</p>
+    <p class="fine">This is a play-coin prototype. No real money is involved and coins have no value. Results are generated in your browser. Return to player is measured over many simulated rounds.</p>
+    <button class="close" id="bClose">Close</button>`;
+  $('modal').classList.add('open');
+  $('bClose').onclick = () => $('modal').classList.remove('open');
+}
+
+$('play').onclick = next;
+$('champ').onclick = flipChamp;
+$('line').onclick = e => flipCard(e.target.closest('.mini'));
+$('bMinus').onclick = () => { if (S.phase === 'idle' && S.betIdx > 0) { S.betIdx--; renderHud(); } };
+$('bPlus').onclick = () => { if (S.phase === 'idle' && S.betIdx < BETS.length - 1) { S.betIdx++; renderHud(); } };
+$('bSound').onclick = () => { S.sound = !S.sound; renderHud(); if (S.sound) SFX.flip(); };
+$('bTurbo').onclick = () => { S.turbo = !S.turbo; renderHud(); auto(); };
+$('bInfo').onclick = openInfo;
+$('modal').onclick = e => { if (e.target.id === 'modal') $('modal').classList.remove('open'); };
+$('stances').onclick = e => {
+  const b = e.target.closest('button');
+  if (!b || S.phase !== 'idle') return;
+  S.stance = b.dataset.k; renderStances(); renderMeter();
+};
+document.addEventListener('keydown', e => {
+  if (e.code !== 'Space' || $('modal').classList.contains('open')) return;
+  e.preventDefault();
+  // Otherwise the spacebar would also click whichever button was tapped last.
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  next();
+});
+
+renderStances(); renderMeter(); renderLine(); renderHud();
+</script>
+</body>
+</html>
