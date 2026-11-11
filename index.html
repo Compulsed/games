@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Games</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 40rem;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+      line-height: 1.5;
+    }
+    ul { list-style: none; padding: 0; }
+    li { margin: 0.5rem 0; }
+    a {
+      display: block;
+      padding: 1rem;
+      border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+      border-radius: 0.75rem;
+      text-decoration: none;
+      color: inherit;
+      font-weight: 600;
+    }
+    a:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
+    .empty { opacity: 0.6; }
+  </style>
+</head>
+<body>
+  <h1>Games</h1>
+  <!-- Add one <li> per game: <li><a href="snake/">Snake</a></li> -->
+  <ul id="games">
+    <li class="empty">No games yet.</li>
+  </ul>
+</body>
+</html>
